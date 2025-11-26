@@ -701,13 +701,13 @@ export default function HomePage() {
                         background: `linear-gradient(180deg,
                           ${index === 0 ? "#6366f1" : index === 1 ? "#a855f7" : "#06b6d4"} 0%,
                           ${index === 0 ? "#a855f7" : index === 1 ? "#06b6d4" : "#8b5cf6"} 50%,
-                          transparent 100%)`
+                          transparent 100%)`,
+                        transformOrigin: "top"
                       }}
                       initial={{ scaleY: 0, opacity: 0 }}
                       whileInView={{ scaleY: 1, opacity: 0.5 }}
                       viewport={{ once: true }}
                       transition={{ delay: index * 0.1 + 0.3, duration: 0.8, ease: "easeOut" }}
-                      style={{ originY: 0 }}
                     >
                       {/* Animated dot traveling down */}
                       <motion.div
