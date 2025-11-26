@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model MasterProfile {
+  id             String     @id @default(cuid())
+  rawText        String     @db.Text
+  structuredData Json
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  jobOffers      JobOffer[]
+}
+
+model JobOffer {
+  id              String        @id @default(cuid())
+  masterProfileId String
+  masterProfile   MasterProfile @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+  rawText         String        @db.Text
+  title           String?
+  company         String?
+  requiredSkills  String[]
+  analysisResult  Json?
+  createdAt       DateTime      @default(now())
+  applications    Application[]
+}
+
+model Application {
+  id              String   @id @default(cuid())
+  jobOfferId      String
+  jobOffer        JobOffer @relation(fields: [jobOfferId], references: [id], onDelete: Cascade)
+  status          String   @default("analyzing")
+  chatHistory     Json     @default("[]")
+  strategies      Json     @default("{}")
+  gapsAddressed   Int      @default(0)
+  totalGaps       Int      @default(3)
+  gapStartIndex   Int      @default(0)
+  finalCvLatex    String?  @db.Text
+  finalCoverLatex String?  @db.Text
+  finalCvPdf      Bytes?
+  finalCoverPdf   Bytes?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
