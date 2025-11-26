@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Sparkles,
   Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -56,71 +57,112 @@ export function DocumentPreview({
       animate={{ opacity: 1, y: 0 }}
       className="flex flex-col h-full"
     >
-      {/* Success/Partial Success header */}
+      {/* Enhanced Success/Partial Success header - Mobile First */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.2 }}
-        className={cn(
-          "mb-4 md:mb-6 flex items-center gap-3 rounded-xl border p-3 md:p-4",
-          partialSuccess
-            ? "bg-amber-500/10 border-amber-500/30"
-            : "bg-emerald-500/10 border-emerald-500/30"
-        )}
+        transition={{ delay: 0.2, type: "spring" }}
+        className="mb-4 md:mb-6"
       >
-        <div className={cn(
-          "rounded-lg p-2",
-          partialSuccess ? "bg-amber-500/20" : "bg-emerald-500/20"
-        )}>
-          {partialSuccess ? (
-            <AlertCircle className="h-5 w-5 text-amber-400" />
-          ) : (
-            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-2xl border p-4 md:p-5",
+            partialSuccess
+              ? "bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/30"
+              : "bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/30"
           )}
-        </div>
-        <div>
-          <h3 className={cn(
-            "font-semibold text-sm md:text-base",
-            partialSuccess ? "text-amber-400" : "text-emerald-400"
-          )}>
-            {partialSuccess
-              ? "LaTeX généré - PDF indisponible"
-              : "Documents générés avec succès !"}
-          </h3>
-          <p className={cn(
-            "text-xs md:text-sm",
-            partialSuccess ? "text-amber-400/70" : "text-emerald-400/70"
-          )}>
-            {partialSuccess
-              ? "Copiez le code LaTeX et compilez-le sur Overleaf.com"
-              : "Votre CV et lettre de motivation sont prêts à être téléchargés."}
-          </p>
+        >
+          {/* Animated background */}
+          <motion.div
+            className={cn(
+              "absolute inset-0 opacity-30",
+              partialSuccess
+                ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20"
+                : "bg-gradient-to-r from-emerald-500/20 to-teal-500/20"
+            )}
+            animate={{
+              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+            }}
+            transition={{ duration: 5, repeat: Infinity }}
+            style={{ backgroundSize: "200% 100%" }}
+          />
+
+          <div className="relative flex items-start gap-3 md:gap-4">
+            {/* Icon */}
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", delay: 0.3 }}
+              className={cn(
+                "flex-shrink-0 rounded-xl p-2.5 md:p-3 shadow-lg",
+                partialSuccess
+                  ? "bg-amber-500/20 shadow-amber-500/30"
+                  : "bg-emerald-500/20 shadow-emerald-500/30"
+              )}
+            >
+              {partialSuccess ? (
+                <AlertCircle className="h-5 w-5 md:h-6 md:w-6 text-amber-400" />
+              ) : (
+                <CheckCircle2 className="h-5 w-5 md:h-6 md:w-6 text-emerald-400" />
+              )}
+            </motion.div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <h3
+                className={cn(
+                  "font-bold text-sm md:text-lg flex items-center gap-2",
+                  partialSuccess ? "text-amber-400" : "text-emerald-400"
+                )}
+              >
+                {partialSuccess
+                  ? "LaTeX généré - PDF indisponible"
+                  : "Documents générés avec succès !"}
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                </motion.div>
+              </h3>
+              <p
+                className={cn(
+                  "mt-1 text-xs md:text-sm leading-relaxed",
+                  partialSuccess ? "text-amber-400/70" : "text-emerald-400/70"
+                )}
+              >
+                {partialSuccess
+                  ? "Copiez le code LaTeX et compilez-le sur Overleaf.com pour générer vos PDF."
+                  : "Vos documents sont prêts ! Téléchargez-les ou copiez le code LaTeX pour les modifier."}
+              </p>
+            </div>
+          </div>
         </div>
       </motion.div>
 
-      {/* Document tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
-        <TabsList className="grid w-full grid-cols-2 mb-4 bg-white/5 border border-white/10">
+      {/* Enhanced Document tabs - Mobile First */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+        <TabsList className="grid w-full grid-cols-2 mb-4 bg-white/5 border border-white/10 p-1 h-auto">
           <TabsTrigger
             value="cv"
-            className="flex items-center gap-2 data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-400 text-white/60"
+            className="flex items-center justify-center gap-2 py-3 px-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/20 data-[state=active]:to-purple-500/20 data-[state=active]:text-indigo-300 text-white/60 font-semibold rounded-lg transition-all data-[state=active]:shadow-lg data-[state=active]:shadow-indigo-500/20"
           >
             <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">CV Optimisé</span>
-            <span className="sm:hidden">CV</span>
+            <span className="hidden xs:inline text-sm">CV Optimisé</span>
+            <span className="xs:hidden text-sm">CV</span>
           </TabsTrigger>
           <TabsTrigger
             value="cover"
-            className="flex items-center gap-2 data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-400 text-white/60"
+            className="flex items-center justify-center gap-2 py-3 px-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/20 data-[state=active]:to-purple-500/20 data-[state=active]:text-indigo-300 text-white/60 font-semibold rounded-lg transition-all data-[state=active]:shadow-lg data-[state=active]:shadow-indigo-500/20"
           >
             <Mail className="h-4 w-4" />
-            <span className="hidden sm:inline">Lettre de Motivation</span>
-            <span className="sm:hidden">Lettre</span>
+            <span className="hidden xs:inline text-sm">Lettre</span>
+            <span className="xs:hidden text-sm">Lettre</span>
           </TabsTrigger>
         </TabsList>
 
         <AnimatePresence mode="wait">
-          <TabsContent value="cv" className="flex-1">
+          <TabsContent value="cv" className="flex-1 mt-0">
             <DocumentCard
               title="CV Optimisé"
               description="Votre CV a été reformulé pour correspondre aux mots-clés de l'offre d'emploi."
@@ -130,7 +172,7 @@ export function DocumentPreview({
             />
           </TabsContent>
 
-          <TabsContent value="cover" className="flex-1">
+          <TabsContent value="cover" className="flex-1 mt-0">
             <DocumentCard
               title="Lettre de Motivation"
               description="Lettre personnalisée basée sur les stratégies définies dans le chat."
@@ -142,26 +184,26 @@ export function DocumentPreview({
         </AnimatePresence>
       </Tabs>
 
-      {/* Action buttons */}
+      {/* Enhanced Action buttons - Mobile First */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="mt-4 md:mt-6 flex flex-col sm:flex-row gap-3"
+        className="mt-4 md:mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3"
       >
         <Button
           variant="outline"
           onClick={onRegenerate}
-          className="flex-1 glass border-white/10 text-white hover:bg-white/10"
+          className="glass border-white/20 text-white hover:bg-white/10 py-6 text-base font-semibold rounded-xl"
         >
-          <RefreshCw className="mr-2 h-4 w-4" />
+          <RefreshCw className="mr-2 h-5 w-5" />
           Régénérer
         </Button>
         <Button
           onClick={onStartNew}
-          className="flex-1 btn-futuristic"
+          className="btn-futuristic py-6 text-base font-semibold rounded-xl shadow-2xl shadow-indigo-500/50"
         >
-          <Sparkles className="mr-2 h-4 w-4" />
+          <Sparkles className="mr-2 h-5 w-5" />
           Nouvelle candidature
         </Button>
       </motion.div>
@@ -185,114 +227,165 @@ function DocumentCard({
   downloadName,
 }: DocumentCardProps) {
   const [showLatex, setShowLatex] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (latexCode) {
+      navigator.clipboard.writeText(latexCode);
+      setCopied(true);
+      toast.success("Code LaTeX copié dans le presse-papier !");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="rounded-xl border border-white/10 bg-white/5 overflow-hidden"
+      className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-white/[0.08] overflow-hidden backdrop-blur-xl"
     >
-      {/* Preview area */}
-      <div className="relative aspect-[3/4] max-h-[400px] md:max-h-[500px] bg-white/10">
+      {/* Enhanced Preview area - Mobile First */}
+      <div className="relative aspect-[3/4] max-h-[350px] sm:max-h-[450px] md:max-h-[550px] bg-gradient-to-br from-white/10 to-white/5">
         {pdfUrl ? (
           <iframe
             src={pdfUrl}
-            className="h-full w-full bg-white"
+            className="h-full w-full bg-white rounded-t-2xl"
             title={title}
           />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center text-white/30">
-            <Eye className="h-10 w-10 md:h-12 md:w-12" />
-            <p className="mt-2 text-sm">Aperçu non disponible</p>
+          <div className="flex h-full flex-col items-center justify-center text-white/30 p-6">
+            <motion.div
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <Eye className="h-12 w-12 md:h-16 md:w-16" />
+            </motion.div>
+            <p className="mt-4 text-sm font-medium">Aperçu non disponible</p>
+            <p className="mt-1 text-xs text-white/20 text-center max-w-xs">
+              Utilisez le code LaTeX ci-dessous pour compiler le PDF
+            </p>
           </div>
         )}
       </div>
 
-      {/* Card footer */}
-      <div className="border-t border-white/10 p-3 md:p-4">
-        <h4 className="font-semibold text-white text-sm md:text-base">{title}</h4>
-        <p className="mt-1 text-xs md:text-sm text-white/50">{description}</p>
-
-        <div className="mt-3 md:mt-4 flex flex-col sm:flex-row gap-2">
-          {pdfUrl && (
-            <>
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="flex-1 glass border-white/10 text-white hover:bg-white/10 text-xs md:text-sm"
-              >
-                <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="mr-2 h-3 w-3 md:h-4 md:w-4" />
-                  Ouvrir
-                </a>
-              </Button>
-              <Button
-                asChild
-                size="sm"
-                className="flex-1 btn-futuristic text-xs md:text-sm"
-              >
-                <a href={pdfUrl} download={downloadName}>
-                  <Download className="mr-2 h-3 w-3 md:h-4 md:w-4" />
-                  Télécharger
-                </a>
-              </Button>
-            </>
-          )}
+      {/* Enhanced Card footer - Mobile First */}
+      <div className="border-t border-white/10 p-4 md:p-5 space-y-4">
+        {/* Title and description */}
+        <div>
+          <h4 className="font-bold text-white text-base md:text-lg">{title}</h4>
+          <p className="mt-1 text-xs md:text-sm text-white/50 leading-relaxed">
+            {description}
+          </p>
         </div>
 
-        {/* LaTeX code section */}
+        {/* Primary action buttons */}
+        {pdfUrl && (
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="glass border-white/20 text-white hover:bg-white/10 rounded-xl py-6"
+            >
+              <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-sm md:text-base font-semibold">Ouvrir</span>
+              </a>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              className="btn-futuristic rounded-xl py-6 shadow-lg shadow-indigo-500/30"
+            >
+              <a href={pdfUrl} download={downloadName}>
+                <Download className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-sm md:text-base font-semibold">Télécharger</span>
+              </a>
+            </Button>
+          </div>
+        )}
+
+        {/* LaTeX code section - Enhanced */}
         {latexCode && (
-          <div className="mt-3 md:mt-4">
-            <div className="flex flex-col sm:flex-row gap-2">
+          <div className="space-y-3">
+            {/* Toggle and copy buttons */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <Button
                 variant="outline"
-                size="sm"
-                className="flex-1 glass border-white/10 text-white hover:bg-white/10 text-xs md:text-sm"
+                size="lg"
+                className="glass border-white/20 text-white hover:bg-white/10 rounded-xl py-6"
                 onClick={() => setShowLatex(!showLatex)}
               >
-                <Code className="mr-2 h-3 w-3 md:h-4 md:w-4" />
-                {showLatex ? "Masquer LaTeX" : "Voir LaTeX"}
+                {showLatex ? (
+                  <>
+                    <X className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                    <span className="text-sm md:text-base font-semibold">Masquer</span>
+                  </>
+                ) : (
+                  <>
+                    <Code className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                    <span className="text-sm md:text-base font-semibold">Voir LaTeX</span>
+                  </>
+                )}
               </Button>
               <Button
                 variant="outline"
-                size="sm"
-                className="flex-1 glass border-white/10 text-white hover:bg-white/10 text-xs md:text-sm"
-                onClick={() => {
-                  navigator.clipboard.writeText(latexCode);
-                  toast.success("Code LaTeX copié !");
-                }}
+                size="lg"
+                className={cn(
+                  "glass border-white/20 hover:bg-white/10 rounded-xl py-6 transition-all",
+                  copied
+                    ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400"
+                    : "text-white"
+                )}
+                onClick={handleCopy}
               >
-                <Copy className="mr-2 h-3 w-3 md:h-4 md:w-4" />
-                Copier LaTeX
+                {copied ? (
+                  <>
+                    <Check className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                    <span className="text-sm md:text-base font-semibold">Copié !</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                    <span className="text-sm md:text-base font-semibold">Copier</span>
+                  </>
+                )}
               </Button>
             </div>
 
+            {/* LaTeX code display */}
             <AnimatePresence>
               {showLatex && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="mt-3 overflow-hidden"
+                  className="overflow-hidden"
                 >
-                  <div className="rounded-lg bg-black/50 border border-white/10 p-3 md:p-4 max-h-48 md:max-h-64 overflow-auto">
-                    <pre className="text-xs text-white/70 whitespace-pre-wrap break-all font-mono">
+                  <div className="rounded-xl bg-black/60 border border-white/10 p-3 md:p-4 max-h-60 sm:max-h-80 overflow-auto backdrop-blur-sm">
+                    <pre className="text-[10px] sm:text-xs text-white/70 whitespace-pre-wrap break-all font-mono leading-relaxed">
                       {latexCode}
                     </pre>
                   </div>
-                  <p className="mt-2 text-xs text-white/40">
-                    Copiez ce code et collez-le sur{" "}
-                    <a
-                      href="https://www.overleaf.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-indigo-400 hover:underline"
-                    >
-                      Overleaf.com
-                    </a>{" "}
-                    pour compiler le PDF.
-                  </p>
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-3"
+                  >
+                    <p className="text-xs text-indigo-300 leading-relaxed">
+                      💡 <span className="font-semibold">Astuce :</span> Copiez ce code et collez-le sur{" "}
+                      <a
+                        href="https://www.overleaf.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-400 hover:underline font-semibold"
+                      >
+                        Overleaf.com
+                      </a>{" "}
+                      pour compiler le PDF ou le modifier avant téléchargement.
+                    </p>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -320,36 +413,36 @@ function GenerationLoader({ progress }: GenerationLoaderProps) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex flex-col items-center justify-center py-8 md:py-12"
+      className="flex flex-col items-center justify-center py-8 md:py-12 px-4"
     >
-      {/* Animated document icon */}
-      <div className="relative mb-6 md:mb-8">
+      {/* Enhanced Animated document icon - Mobile First */}
+      <div className="relative mb-8 md:mb-10">
         {/* Outer glow */}
         <motion.div
-          className="absolute inset-0 rounded-xl bg-indigo-500/20 blur-2xl"
+          className="absolute inset-0 rounded-2xl bg-indigo-500/20 blur-3xl"
           animate={{
-            scale: [1, 1.2, 1],
+            scale: [1, 1.3, 1],
             opacity: [0.3, 0.6, 0.3],
           }}
           transition={{ duration: 2, repeat: Infinity }}
         />
 
         <motion.div
-          className="relative h-20 w-16 md:h-24 md:w-20 rounded-lg glass border border-white/20"
+          className="relative h-24 w-20 md:h-32 md:w-24 rounded-xl glass border border-white/20 shadow-2xl shadow-indigo-500/30"
           animate={{
             boxShadow: [
               "0 0 20px rgba(99, 102, 241, 0.2)",
-              "0 0 40px rgba(99, 102, 241, 0.4)",
+              "0 0 40px rgba(99, 102, 241, 0.5)",
               "0 0 20px rgba(99, 102, 241, 0.2)",
             ],
           }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <div className="absolute inset-2 space-y-1.5">
+          <div className="absolute inset-3 space-y-2">
             {[...Array(5)].map((_, i) => (
               <motion.div
                 key={i}
-                className="h-1 md:h-1.5 rounded bg-white/20"
+                className="h-1.5 md:h-2 rounded bg-white/20"
                 style={{ width: `${60 + Math.random() * 30}%` }}
                 animate={{ opacity: [0.3, 1, 0.3] }}
                 transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
@@ -360,41 +453,48 @@ function GenerationLoader({ progress }: GenerationLoaderProps) {
 
         {/* Floating elements */}
         <motion.div
-          className="absolute -right-2 -top-2 h-5 w-5 md:h-6 md:w-6 rounded-full bg-indigo-500 shadow-lg shadow-indigo-500/50"
+          className="absolute -right-3 -top-3 h-6 w-6 md:h-8 md:w-8 rounded-full bg-indigo-500 shadow-lg shadow-indigo-500/50"
           animate={{ scale: [1, 1.2, 1], opacity: [1, 0.8, 1] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         />
         <motion.div
-          className="absolute -bottom-2 -left-2 h-4 w-4 md:h-5 md:w-5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50"
+          className="absolute -bottom-3 -left-3 h-5 w-5 md:h-7 md:w-7 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50"
           animate={{ scale: [1, 1.3, 1], opacity: [1, 0.7, 1] }}
           transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
         />
       </div>
 
-      <h3 className="text-lg md:text-xl font-semibold text-white">
+      <h3 className="text-xl md:text-2xl font-bold text-white">
         Génération en cours...
       </h3>
-      <p className="mt-1 text-sm text-white/50">
+      <p className="mt-2 text-sm md:text-base text-white/50 text-center max-w-sm">
         Création de vos documents personnalisés
       </p>
 
-      {/* Progress bar */}
-      <div className="mt-6 w-full max-w-xs md:max-w-sm">
-        <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+      {/* Enhanced Progress bar - Mobile First */}
+      <div className="mt-8 w-full max-w-sm md:max-w-md">
+        <div className="relative h-3 w-full overflow-hidden rounded-full bg-white/10">
           <motion.div
-            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500"
+            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 relative"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.3 }}
-          />
+          >
+            {/* Shine effect */}
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+              animate={{ x: ["-100%", "200%"] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            />
+          </motion.div>
         </div>
-        <p className="mt-2 text-center text-sm font-medium text-indigo-400">
+        <p className="mt-3 text-center text-base md:text-lg font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
           {Math.round(progress)}%
         </p>
       </div>
 
-      {/* Steps */}
-      <div className="mt-6 md:mt-8 space-y-2 w-full max-w-xs md:max-w-sm">
+      {/* Enhanced Steps - Mobile First */}
+      <div className="mt-8 md:mt-10 space-y-3 w-full max-w-sm md:max-w-md">
         {steps.map((step, index) => {
           const isComplete = progress >= step.threshold;
           const isActive = progress >= (steps[index - 1]?.threshold || 0) && progress < step.threshold;
@@ -405,24 +505,24 @@ function GenerationLoader({ progress }: GenerationLoaderProps) {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="flex items-center gap-3"
+              className="flex items-center gap-3 md:gap-4"
             >
               <div
                 className={cn(
-                  "flex h-5 w-5 md:h-6 md:w-6 items-center justify-center rounded-full transition-all",
+                  "flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-xl transition-all shadow-lg",
                   isComplete
-                    ? "bg-emerald-500/20 ring-2 ring-emerald-500/50"
+                    ? "bg-emerald-500/20 ring-2 ring-emerald-500/50 shadow-emerald-500/30"
                     : isActive
-                      ? "bg-indigo-500/20 ring-2 ring-indigo-500/50"
+                      ? "bg-indigo-500/20 ring-2 ring-indigo-500/50 shadow-indigo-500/30"
                       : "bg-white/5 ring-1 ring-white/10"
                 )}
               >
                 {isComplete ? (
-                  <Check className="h-3 w-3 text-emerald-400" />
+                  <Check className="h-4 w-4 text-emerald-400" />
                 ) : (
                   <div
                     className={cn(
-                      "h-2 w-2 rounded-full",
+                      "h-2.5 w-2.5 rounded-full",
                       isActive ? "bg-indigo-400 animate-pulse" : "bg-white/30"
                     )}
                   />
@@ -430,7 +530,7 @@ function GenerationLoader({ progress }: GenerationLoaderProps) {
               </div>
               <span
                 className={cn(
-                  "text-xs md:text-sm transition-colors",
+                  "text-sm md:text-base font-medium transition-colors",
                   isComplete
                     ? "text-emerald-400"
                     : isActive
