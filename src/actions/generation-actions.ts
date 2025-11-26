@@ -80,8 +80,8 @@ export async function generateDocuments(
       await prisma.application.update({
         where: { id: applicationId },
         data: {
-          finalCvPdf: cvPdf,
-          finalCoverPdf: coverPdf,
+          finalCvPdf: cvPdf as any,
+          finalCoverPdf: coverPdf as any,
           status: "completed",
         },
       });

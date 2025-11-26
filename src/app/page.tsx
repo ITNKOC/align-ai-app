@@ -142,7 +142,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center px-4 py-12 md:py-20">
+      <section className="relative min-h-screen flex items-center justify-center px-4 py-12 md:py-20 overflow-hidden">
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
@@ -168,93 +168,304 @@ export default function HomePage() {
             animate={{ rotate: 360 }}
             transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
           />
+
+          {/* Floating particles */}
+          {[...Array(20)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 bg-indigo-400/30 rounded-full"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                y: [0, -30, 0],
+                opacity: [0, 1, 0],
+              }}
+              transition={{
+                duration: 3 + Math.random() * 2,
+                repeat: Infinity,
+                delay: Math.random() * 2,
+              }}
+            />
+          ))}
         </div>
 
         {/* Grid pattern */}
         <div className="absolute inset-0 grid-pattern opacity-30" />
 
-        <div className="relative z-10 mx-auto max-w-6xl text-center">
+        <div className="relative z-10 mx-auto max-w-7xl text-center">
+          {/* Badge with enhanced design */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            initial={{ opacity: 0, scale: 0.8, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.6, type: "spring" }}
+            className="inline-block"
           >
-            <span className="inline-flex items-center gap-2 rounded-full glass px-4 py-2 text-sm font-medium text-indigo-300 shadow-lg">
-              <Sparkles className="h-4 w-4 text-indigo-400" />
-              <span>Propulsé par Gemini 2.0 Flash</span>
-            </span>
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="relative inline-flex items-center gap-3 rounded-full px-5 py-2.5 overflow-hidden group cursor-pointer"
+            >
+              {/* Animated background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 backdrop-blur-xl border border-indigo-500/20" />
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-indigo-500/20"
+                animate={{
+                  backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+                }}
+                transition={{ duration: 3, repeat: Infinity }}
+                style={{ backgroundSize: "200% 100%" }}
+              />
+
+              {/* Content */}
+              <motion.div
+                animate={{ rotate: [0, 360] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              >
+                <Sparkles className="h-4 w-4 text-indigo-400" />
+              </motion.div>
+              <span className="relative text-sm font-semibold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                Propulsé par Gemini 2.0 Flash
+              </span>
+              <motion.div
+                className="h-2 w-2 rounded-full bg-emerald-400"
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [1, 0.5, 1],
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+            </motion.div>
           </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="mt-6 md:mt-8 text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight"
-          >
-            <span className="text-white">La candidature</span>
-            <br />
-            <span className="gradient-text">chirurgicale</span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mx-auto mt-6 max-w-3xl text-lg md:text-xl text-white/70 px-4 leading-relaxed"
-          >
-            Optimisez votre CV et lettre de motivation pour chaque offre
-            d&apos;emploi. Notre IA analyse, conseille et génère des documents
-            sur mesure - <span className="text-indigo-400 font-semibold">sans jamais mentir</span> sur vos compétences.
-          </motion.p>
-
+          {/* Main Title with enhanced animations */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-8 md:mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 px-4"
+            transition={{ duration: 0.8, delay: 0.2, type: "spring" }}
+            className="mt-8 md:mt-12"
           >
-            <Button
-              size="lg"
-              onClick={() => router.push("/upload")}
-              className="w-full sm:w-auto btn-futuristic text-base md:text-lg px-10 py-7 shadow-2xl shadow-indigo-500/50 hover:shadow-indigo-500/70 transition-all"
-            >
-              Commencer gratuitement
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => {
-                document
-                  .getElementById("how-it-works")
-                  ?.scrollIntoView({ behavior: "smooth" });
-              }}
-              className="w-full sm:w-auto glass border-white/10 text-white hover:bg-white/10 px-10 py-7"
-            >
-              Comment ça marche ?
-            </Button>
+            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl font-bold tracking-tight">
+              <motion.span
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3, duration: 0.6 }}
+                className="block text-white mb-2 md:mb-4"
+              >
+                La candidature
+              </motion.span>
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, duration: 0.8, type: "spring" }}
+                className="relative inline-block"
+              >
+                <span className="gradient-text relative">
+                  chirurgicale
+                  {/* Animated underline */}
+                  <motion.div
+                    className="absolute -bottom-2 md:-bottom-4 left-0 right-0 h-1 md:h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full"
+                    initial={{ scaleX: 0, opacity: 0 }}
+                    animate={{ scaleX: 1, opacity: 1 }}
+                    transition={{ delay: 0.8, duration: 0.8 }}
+                  />
+                  {/* Glow effect */}
+                  <motion.div
+                    className="absolute inset-0 blur-2xl opacity-50"
+                    animate={{
+                      opacity: [0.3, 0.6, 0.3],
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <span className="gradient-text">chirurgicale</span>
+                  </motion.div>
+                </span>
+              </motion.span>
+            </h1>
           </motion.div>
 
-          {/* Stats */}
+          {/* Enhanced Description */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-16 md:mt-20 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto px-4"
+            transition={{ duration: 0.6, delay: 0.6 }}
+            className="mx-auto mt-8 md:mt-10 max-w-4xl px-4"
+          >
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white/80 leading-relaxed">
+              Optimisez votre CV et lettre de motivation pour{" "}
+              <span className="text-white font-semibold">chaque offre d&apos;emploi</span>.
+              <br className="hidden md:block" />
+              Notre IA analyse, conseille et génère des documents sur mesure -{" "}
+              <motion.span
+                className="relative inline-block"
+                whileHover={{ scale: 1.05 }}
+              >
+                <span className="text-indigo-400 font-bold">
+                  sans jamais mentir
+                </span>
+                <motion.div
+                  className="absolute -bottom-1 left-0 right-0 h-0.5 bg-indigo-400"
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ delay: 1, duration: 0.6 }}
+                />
+              </motion.span>{" "}
+              sur vos compétences.
+            </p>
+          </motion.div>
+
+          {/* Enhanced CTA Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.8 }}
+            className="mt-10 md:mt-14 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 px-4"
+          >
+            {/* Primary Button */}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-full sm:w-auto relative group"
+            >
+              {/* Button glow */}
+              <motion.div
+                className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl opacity-75 group-hover:opacity-100 blur-xl transition-opacity"
+                animate={{
+                  scale: [1, 1.1, 1],
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+
+              <Button
+                size="lg"
+                onClick={() => router.push("/upload")}
+                className="relative w-full btn-futuristic text-base md:text-lg lg:text-xl px-10 md:px-12 py-6 md:py-8 shadow-2xl shadow-indigo-500/50 hover:shadow-indigo-500/80 font-bold group overflow-hidden"
+              >
+                {/* Animated shine */}
+                <motion.div
+                  className="absolute inset-0"
+                  animate={{
+                    x: ["-100%", "200%"],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    repeatDelay: 3,
+                  }}
+                  style={{
+                    background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)",
+                  }}
+                />
+
+                <span className="relative flex items-center gap-3">
+                  <Sparkles className="h-5 w-5" />
+                  <span>Commencer gratuitement</span>
+                  <motion.div
+                    animate={{ x: [0, 5, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  >
+                    <ArrowRight className="h-5 w-5" />
+                  </motion.div>
+                </span>
+              </Button>
+            </motion.div>
+
+            {/* Secondary Button */}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-full sm:w-auto"
+            >
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => {
+                  document
+                    .getElementById("how-it-works")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="w-full glass border-white/20 hover:border-indigo-500/40 text-white hover:bg-white/10 px-10 md:px-12 py-6 md:py-8 text-base md:text-lg backdrop-blur-xl transition-all"
+              >
+                <span className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  Comment ça marche ?
+                </span>
+              </Button>
+            </motion.div>
+          </motion.div>
+
+          {/* Enhanced Stats with cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 1 }}
+            className="mt-16 md:mt-24 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto px-4"
           >
             {stats.map((stat, index) => (
               <motion.div
                 key={stat.label}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.5 + index * 0.1 }}
-                className="glass rounded-xl p-4 md:p-6"
+                initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{
+                  delay: 1.1 + index * 0.1,
+                  type: "spring",
+                  stiffness: 200,
+                  damping: 15,
+                }}
+                whileHover={{
+                  y: -8,
+                  scale: 1.05,
+                  transition: { duration: 0.2 },
+                }}
+                className="relative group"
               >
-                <div className="text-2xl md:text-3xl font-bold text-indigo-400">
-                  {stat.value}
-                </div>
-                <div className="mt-1 text-xs md:text-sm text-white/50">
-                  {stat.label}
+                {/* Card glow */}
+                <motion.div
+                  className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl opacity-0 group-hover:opacity-75 blur-lg transition-opacity"
+                  animate={{
+                    scale: [1, 1.05, 1],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+
+                {/* Card */}
+                <div className="relative glass rounded-2xl p-5 md:p-7 border border-white/10 group-hover:border-indigo-500/30 transition-all">
+                  {/* Animated gradient overlay */}
+                  <motion.div
+                    className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500/0 via-purple-500/5 to-indigo-500/0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    animate={{
+                      backgroundPosition: ["0% 0%", "100% 100%"],
+                    }}
+                    transition={{ duration: 3, repeat: Infinity, repeatType: "reverse" }}
+                    style={{ backgroundSize: "200% 200%" }}
+                  />
+
+                  <div className="relative">
+                    {/* Value with counter animation */}
+                    <motion.div
+                      className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-br from-indigo-400 to-purple-400 bg-clip-text text-transparent mb-2"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 1.2 + index * 0.1, type: "spring" }}
+                    >
+                      {stat.value}
+                    </motion.div>
+
+                    {/* Label */}
+                    <div className="text-xs md:text-sm text-white/60 group-hover:text-white/80 transition-colors font-medium">
+                      {stat.label}
+                    </div>
+
+                    {/* Bottom accent line */}
+                    <motion.div
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      animate={{
+                        backgroundPosition: ["-200% 0", "200% 0"],
+                      }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      style={{ backgroundSize: "200% 100%" }}
+                    />
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -264,7 +475,7 @@ export default function HomePage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.2 }}
+            transition={{ delay: 1.5 }}
             className="absolute bottom-12 left-1/2 -translate-x-1/2 hidden md:block cursor-pointer"
             onClick={() => {
               const featuresSection = document.querySelector('#features');
@@ -274,15 +485,22 @@ export default function HomePage() {
             <motion.div
               animate={{ y: [0, 12, 0] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              className="flex flex-col items-center gap-2"
+              className="flex flex-col items-center gap-2 group"
             >
-              <span className="text-xs text-white/40 font-medium tracking-wider uppercase">
+              <span className="text-xs text-white/40 font-medium tracking-wider uppercase group-hover:text-white/60 transition-colors">
                 Découvrir
               </span>
               <div className="relative">
-                <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl" />
-                <div className="relative h-12 w-12 rounded-full glass border-2 border-indigo-500/30 flex items-center justify-center hover:border-indigo-500/60 transition-all">
-                  <ChevronDown className="h-6 w-6 text-indigo-400" />
+                <motion.div
+                  className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl"
+                  animate={{
+                    scale: [1, 1.3, 1],
+                    opacity: [0.5, 0.8, 0.5],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+                <div className="relative h-12 w-12 rounded-full glass border-2 border-indigo-500/30 flex items-center justify-center group-hover:border-indigo-500/60 group-hover:bg-indigo-500/10 transition-all">
+                  <ChevronDown className="h-6 w-6 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
                 </div>
               </div>
             </motion.div>
@@ -739,48 +957,221 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="px-4 py-16 md:py-24">
+      <section className="px-4 py-16 md:py-32 relative overflow-hidden">
+        {/* Background effects */}
+        <div className="absolute inset-0 pointer-events-none">
+          <motion.div
+            className="absolute top-1/2 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl"
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.3, 0.5, 0.3],
+            }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute top-1/2 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"
+            animate={{
+              scale: [1.2, 1, 1.2],
+              opacity: [0.5, 0.3, 0.5],
+            }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          />
+        </div>
+
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mx-auto max-w-5xl"
+          transition={{ duration: 0.8, type: "spring" }}
+          className="mx-auto max-w-6xl relative"
         >
-          <div className="relative overflow-hidden rounded-3xl glass p-10 md:p-16 text-center">
+          <div className="relative overflow-hidden rounded-3xl border border-white/10">
             {/* Animated gradient background */}
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-cyan-500/20 opacity-50" />
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-indigo-500/10" />
             <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-cyan-500/10"
+              className="absolute inset-0"
               animate={{
-                backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+                background: [
+                  "radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 50%)",
+                  "radial-gradient(circle at 100% 100%, rgba(168, 85, 247, 0.15) 0%, transparent 50%)",
+                  "radial-gradient(circle at 0% 100%, rgba(99, 102, 241, 0.15) 0%, transparent 50%)",
+                  "radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.15) 0%, transparent 50%)",
+                  "radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 50%)",
+                ],
               }}
-              transition={{ duration: 5, repeat: Infinity }}
-              style={{ backgroundSize: "200% 200%" }}
+              transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
             />
 
-            <div className="relative z-10">
-              <Sparkles className="h-12 w-12 md:h-16 md:w-16 text-indigo-400 mx-auto mb-6" />
-              <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-                Prêt à décrocher votre{" "}
-                <span className="gradient-text">prochain job</span> ?
-              </h2>
-              <p className="mt-4 text-lg md:text-xl text-white/70 max-w-2xl mx-auto leading-relaxed">
-                Rejoignez des centaines de candidats qui ont transformé leur
-                recherche d&apos;emploi avec Align.ai. Commencez gratuitement
-                aujourd&apos;hui.
-              </p>
-              <Button
-                size="lg"
-                onClick={() => router.push("/upload")}
-                className="mt-10 btn-futuristic text-lg md:text-xl px-12 py-7 shadow-2xl shadow-indigo-500/50 hover:shadow-indigo-500/70"
-              >
-                Créer ma première candidature
-                <ArrowRight className="ml-3 h-6 w-6" />
-              </Button>
-              <p className="mt-6 text-sm text-white/40">
-                Gratuit • Sans engagement • 100% Éthique
-              </p>
+            {/* Grid pattern overlay */}
+            <div className="absolute inset-0 grid-pattern opacity-20" />
+
+            {/* Main content */}
+            <div className="relative glass p-10 md:p-20">
+              <div className="max-w-4xl mx-auto text-center">
+                {/* Icon with glow */}
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  whileInView={{ scale: 1, rotate: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ type: "spring", duration: 1, delay: 0.2 }}
+                  className="relative inline-block mb-8"
+                >
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full blur-2xl opacity-60"
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      opacity: [0.6, 0.8, 0.6],
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                  <div className="relative h-20 w-20 md:h-24 md:w-24 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-2xl shadow-indigo-500/50">
+                    <Sparkles className="h-10 w-10 md:h-12 md:w-12 text-white" />
+                  </div>
+                </motion.div>
+
+                {/* Title */}
+                <motion.h2
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.3 }}
+                  className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-6"
+                >
+                  Prêt à décrocher votre{" "}
+                  <span className="relative inline-block">
+                    <span className="gradient-text">prochain job</span>
+                    <motion.div
+                      className="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+                      initial={{ scaleX: 0 }}
+                      whileInView={{ scaleX: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.6, duration: 0.6 }}
+                    />
+                  </span>{" "}
+                  ?
+                </motion.h2>
+
+                {/* Description */}
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.4 }}
+                  className="text-base sm:text-lg md:text-xl text-white/70 max-w-3xl mx-auto leading-relaxed mb-10"
+                >
+                  Rejoignez <span className="text-indigo-400 font-semibold">des centaines de candidats</span> qui ont transformé leur
+                  recherche d&apos;emploi avec Align.ai. Commencez gratuitement
+                  aujourd&apos;hui.
+                </motion.p>
+
+                {/* Stats badges */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.5 }}
+                  className="flex flex-wrap items-center justify-center gap-4 mb-12"
+                >
+                  {[
+                    { icon: CheckCircle2, text: "Gratuit" },
+                    { icon: Shield, text: "100% Éthique" },
+                    { icon: Zap, text: "5 min chrono" },
+                  ].map((badge, index) => (
+                    <motion.div
+                      key={badge.text}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.6 + index * 0.1 }}
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm"
+                    >
+                      <badge.icon className="h-4 w-4 text-indigo-400" />
+                      <span className="text-sm font-medium text-white/90">{badge.text}</span>
+                    </motion.div>
+                  ))}
+                </motion.div>
+
+                {/* CTA Button */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.7, type: "spring" }}
+                  className="relative inline-block group"
+                >
+                  {/* Button glow effect */}
+                  <motion.div
+                    className="absolute -inset-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl opacity-0 group-hover:opacity-75 blur-xl transition-opacity"
+                    animate={{
+                      scale: [1, 1.05, 1],
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+
+                  <Button
+                    size="lg"
+                    onClick={() => router.push("/upload")}
+                    className="relative btn-futuristic text-base sm:text-lg md:text-xl px-10 sm:px-14 py-6 sm:py-8 shadow-2xl shadow-indigo-500/50 hover:shadow-indigo-500/80 transition-all group overflow-hidden"
+                  >
+                    {/* Shine effect */}
+                    <motion.div
+                      className="absolute inset-0 w-full h-full"
+                      animate={{
+                        x: ["-100%", "200%"],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        repeatDelay: 3,
+                        ease: "easeInOut",
+                      }}
+                      style={{
+                        background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)",
+                      }}
+                    />
+
+                    <span className="relative flex items-center gap-3">
+                      <span>Créer ma première candidature</span>
+                      <motion.div
+                        animate={{ x: [0, 5, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      >
+                        <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6" />
+                      </motion.div>
+                    </span>
+                  </Button>
+                </motion.div>
+
+                {/* Bottom info */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.9 }}
+                  className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8"
+                >
+                  <div className="flex items-center gap-2 text-sm text-white/50">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    <span>Sans engagement</span>
+                  </div>
+                  <div className="hidden sm:block w-1 h-1 rounded-full bg-white/20" />
+                  <div className="flex items-center gap-2 text-sm text-white/50">
+                    <Shield className="h-4 w-4 text-indigo-400" />
+                    <span>Données sécurisées</span>
+                  </div>
+                  <div className="hidden sm:block w-1 h-1 rounded-full bg-white/20" />
+                  <div className="flex items-center gap-2 text-sm text-white/50">
+                    <Sparkles className="h-4 w-4 text-purple-400" />
+                    <span>Résultats instantanés</span>
+                  </div>
+                </motion.div>
+              </div>
             </div>
+
+            {/* Decorative corners */}
+            <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-indigo-500/20 to-transparent rounded-br-full" />
+            <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-purple-500/20 to-transparent rounded-tl-full" />
           </div>
         </motion.div>
       </section>

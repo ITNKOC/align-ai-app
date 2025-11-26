@@ -185,8 +185,8 @@ export async function sendChatMessage(
     await prisma.application.update({
       where: { id: applicationId },
       data: {
-        chatHistory: newChatHistory,
-        strategies: newStrategies,
+        chatHistory: newChatHistory as any,
+        strategies: newStrategies as any,
         gapsAddressed: newGapIndex,
         gapStartIndex: newGapStartIndex,
         status: isComplete ? "strategies_complete" : "chatting",
@@ -259,7 +259,7 @@ export async function initializeChat(
     await prisma.application.update({
       where: { id: applicationId },
       data: {
-        chatHistory: [aiChatMessage],
+        chatHistory: [aiChatMessage] as any,
         status: "chatting",
       },
     });
