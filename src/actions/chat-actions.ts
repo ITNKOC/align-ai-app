@@ -44,10 +44,10 @@ export async function sendChatMessage(
       return { success: false, error: "Application non trouvée" };
     }
 
-    const cvData = application.jobOffer.masterProfile.structuredData as CVData;
-    const analysisResult = application.jobOffer.analysisResult as AnalysisResult;
-    const chatHistory = application.chatHistory as ChatMessage[];
-    const strategies = Object.values(application.strategies as Record<string, Strategy>);
+    const cvData = application.jobOffer.masterProfile.structuredData as unknown as CVData;
+    const analysisResult = application.jobOffer.analysisResult as unknown as AnalysisResult;
+    const chatHistory = application.chatHistory as unknown as ChatMessage[];
+    const strategies = Object.values(application.strategies as unknown as Record<string, Strategy>);
     const currentGapIndex = application.gapsAddressed;
 
     // Check if already complete
@@ -147,7 +147,7 @@ export async function sendChatMessage(
     const newChatHistory = [...chatHistory, userChatMessage, aiChatMessage];
 
     // Update strategies if a new one was validated
-    const newStrategies = { ...(application.strategies as Record<string, Strategy>) };
+    const newStrategies = { ...(application.strategies as unknown as Record<string, Strategy>) };
     if (aiResponse.strategy && aiResponse.strategy.validated) {
       newStrategies[currentGap.skill] = aiResponse.strategy;
     }
@@ -229,14 +229,14 @@ export async function initializeChat(
     }
 
     // If chat already has messages, return success
-    const chatHistory = application.chatHistory as ChatMessage[];
+    const chatHistory = application.chatHistory as unknown as ChatMessage[];
     if (chatHistory.length > 0) {
       return { success: true };
     }
 
-    const cvData = application.jobOffer.masterProfile.structuredData as CVData;
-    const analysisResult = application.jobOffer.analysisResult as AnalysisResult;
-    const strategies = Object.values(application.strategies as Record<string, Strategy>);
+    const cvData = application.jobOffer.masterProfile.structuredData as unknown as CVData;
+    const analysisResult = application.jobOffer.analysisResult as unknown as AnalysisResult;
+    const strategies = Object.values(application.strategies as unknown as Record<string, Strategy>);
 
     // Generate initial message from AI
     const systemPrompt = getStrategistSystemPrompt(
@@ -294,12 +294,12 @@ export async function getChatState(applicationId: string) {
       return { success: false, error: "Application non trouvée" };
     }
 
-    const analysisResult = application.jobOffer.analysisResult as AnalysisResult;
+    const analysisResult = application.jobOffer.analysisResult as unknown as AnalysisResult;
 
     return {
       success: true,
-      chatHistory: application.chatHistory as ChatMessage[],
-      strategies: Object.values(application.strategies as Record<string, Strategy>),
+      chatHistory: application.chatHistory as unknown as ChatMessage[],
+      strategies: Object.values(application.strategies as unknown as Record<string, Strategy>),
       currentGapIndex: application.gapsAddressed,
       totalGaps: application.totalGaps,
       gaps: analysisResult.gaps,

@@ -27,7 +27,7 @@ export async function analyzeJobOffer(
       return { success: false, error: "Profil non trouvé" };
     }
 
-    const cvData = profile.structuredData as CVData;
+    const cvData = profile.structuredData as unknown as CVData;
 
     // Use Gemini to analyze the match
     const prompt = getJobAnalysisPrompt(cvData, jobDescription);
@@ -104,11 +104,11 @@ export async function getJobAnalysis(applicationId: string) {
         id: application.jobOffer.id,
         title: application.jobOffer.title,
         company: application.jobOffer.company,
-        analysisResult: application.jobOffer.analysisResult as AnalysisResult,
+        analysisResult: application.jobOffer.analysisResult as unknown as AnalysisResult,
       },
       profile: {
         id: application.jobOffer.masterProfile.id,
-        cvData: application.jobOffer.masterProfile.structuredData as CVData,
+        cvData: application.jobOffer.masterProfile.structuredData as unknown as CVData,
       },
     };
   } catch (error) {

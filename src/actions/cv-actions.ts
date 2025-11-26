@@ -77,7 +77,7 @@ export async function getProfile(profileId: string) {
       success: true,
       profile: {
         id: profile.id,
-        cvData: profile.structuredData as CVData,
+        cvData: profile.structuredData as unknown as CVData,
         rawText: profile.rawText,
       },
     };

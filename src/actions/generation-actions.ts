@@ -44,9 +44,9 @@ export async function generateDocuments(
       };
     }
 
-    const cvData = application.jobOffer.masterProfile.structuredData as CVData;
-    const analysisResult = application.jobOffer.analysisResult as AnalysisResult;
-    const strategies = Object.values(application.strategies as Record<string, Strategy>);
+    const cvData = application.jobOffer.masterProfile.structuredData as unknown as CVData;
+    const analysisResult = application.jobOffer.analysisResult as unknown as AnalysisResult;
+    const strategies = Object.values(application.strategies as unknown as Record<string, Strategy>);
     const jobDescription = application.jobOffer.rawText;
 
     // Generate LaTeX documents using Gemini
