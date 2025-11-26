@@ -521,3 +521,92 @@ RÈGLES IMPORTANTES:
 (document LaTeX complet de la lettre - commence par \\documentclass)
 ===COVER_END===`;
 }
+
+// PROMPT 5: LATEX REGENERATION WITH INSTRUCTIONS (Writer)
+export function getLatexRegenerationPrompt(
+  currentCvLatex: string,
+  currentCoverLatex: string,
+  userInstructions: string,
+  cvData: CVData,
+  jobDescription: string
+): string {
+  return `Tu es un expert en LaTeX et en optimisation de documents professionnels.
+
+CONTEXTE:
+Le candidat a des documents LaTeX déjà générés (CV et lettre de motivation) et souhaite les modifier selon ses instructions spécifiques.
+
+PROFIL DU CANDIDAT:
+${JSON.stringify(cvData, null, 2)}
+
+OFFRE D'EMPLOI:
+"""
+${jobDescription}
+"""
+
+DOCUMENT CV ACTUEL:
+"""
+${currentCvLatex}
+"""
+
+DOCUMENT LETTRE DE MOTIVATION ACTUELLE:
+"""
+${currentCoverLatex}
+"""
+
+INSTRUCTIONS DU CANDIDAT:
+"""
+${userInstructions}
+"""
+
+MISSION:
+Modifie les documents LaTeX en suivant EXACTEMENT les instructions du candidat. Les modifications peuvent inclure:
+
+1. **CONTENU**:
+   - Reformuler des bullet points
+   - Ajouter/supprimer des sections
+   - Mettre en avant certaines compétences
+   - Changer l'ordre des informations
+
+2. **STYLE VISUEL**:
+   - Changer les couleurs (remplacer les RGB)
+   - Modifier la police de caractères
+   - Ajuster les espacements
+   - Ajouter/supprimer des éléments décoratifs (règles, bordures)
+
+3. **STRUCTURE**:
+   - Réorganiser l'ordre des sections
+   - Changer la disposition (1 colonne, 2 colonnes)
+   - Modifier les en-têtes/pieds de page
+
+4. **FORMAT**:
+   - Passer à un format sur 2 colonnes
+   - Changer les marges
+   - Ajuster la taille de police globale
+
+RÈGLES ABSOLUES:
+1. RESTE FIDÈLE AUX FAITS: Ne jamais inventer d'expériences ou de compétences
+2. PRÉSERVE LES DONNÉES RÉELLES: Garde toutes les informations factuelles du candidat
+3. APPLIQUE LES INSTRUCTIONS: Fais exactement ce que le candidat demande
+4. GARDE LE FORMAT LaTeX VALIDE: Les documents doivent compiler correctement
+5. ÉCHAPPE LES CARACTÈRES SPÉCIAUX: \\& pour &, \\% pour %, \\# pour #, \\$ pour $, \\_ pour _
+
+EXEMPLES D'INSTRUCTIONS ET ACTIONS:
+- "Mettre en avant mes compétences Python" → Reformuler les bullets pour souligner Python
+- "Passer le CV sur 2 colonnes" → Utiliser minipage ou multicol pour layout 2 colonnes
+- "Changer la couleur en bleu marine" → Modifier definecolor avec RGB approprié
+- "Ajouter une section Certifications" → Insérer nouvelle section avec icône appropriée
+- "Rendre la lettre plus concise" → Réduire les paragraphes tout en gardant l'essentiel
+- "Supprimer la section Projets" → Retirer complètement cette section du LaTeX
+
+FORMAT DE RÉPONSE:
+Réponds avec les deux documents LaTeX complets entre les marqueurs.
+NE PAS utiliser de blocs de code markdown (pas de \`\`\`latex).
+
+===CV_START===
+(document LaTeX complet du CV modifié - commence par \\documentclass)
+===CV_END===
+
+===COVER_START===
+(document LaTeX complet de la lettre modifiée - commence par \\documentclass)
+===COVER_END===`;
+}

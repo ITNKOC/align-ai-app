@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Scan, Check } from "lucide-react";
+import { Sparkles, Check, FileText, Brain, Zap } from "lucide-react";
 
 interface BiometricLoaderProps {
   progress?: number;
@@ -13,133 +13,163 @@ export function BiometricLoader({
   status = "Analyse en cours...",
 }: BiometricLoaderProps) {
   const steps = [
-    { label: "Extraction du texte", threshold: 20 },
-    { label: "Analyse des compétences", threshold: 50 },
-    { label: "Structuration du profil", threshold: 80 },
+    { label: "Extraction du texte", threshold: 30, icon: FileText, gradient: "from-cyan-500 to-indigo-500" },
+    { label: "Analyse des compétences", threshold: 65, icon: Brain, gradient: "from-indigo-500 to-purple-500" },
+    { label: "Structuration du profil", threshold: 90, icon: Zap, gradient: "from-purple-500 to-violet-500" },
   ];
 
   return (
     <div className="flex flex-col items-center justify-center py-8 md:py-12">
-      {/* Scanning animation container */}
-      <div className="relative h-40 w-40 md:h-48 md:w-48">
-        {/* Outer glow */}
+      {/* Premium scanning animation container */}
+      <div className="relative h-48 w-48 md:h-56 md:w-56 mb-8">
+        {/* Static outer glow */}
         <motion.div
-          className="absolute inset-0 rounded-full bg-indigo-500/20 blur-2xl"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.6, 0.3],
-          }}
-          transition={{ duration: 2, repeat: Infinity }}
+          className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-cyan-500/20 blur-3xl"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8 }}
         />
 
-        {/* Outer ring */}
+        {/* Outer ring - progress based */}
+        <svg className="absolute inset-0 w-full h-full -rotate-90">
+          <circle
+            cx="50%"
+            cy="50%"
+            r="45%"
+            fill="none"
+            stroke="rgba(99, 102, 241, 0.1)"
+            strokeWidth="2"
+          />
+          <motion.circle
+            cx="50%"
+            cy="50%"
+            r="45%"
+            fill="none"
+            stroke="url(#gradient)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: progress / 100 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            style={{
+              strokeDasharray: "1 1",
+            }}
+          />
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#06b6d4" />
+              <stop offset="50%" stopColor="#6366f1" />
+              <stop offset="100%" stopColor="#a855f7" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        {/* Middle decorative ring */}
+        <div className="absolute inset-4 md:inset-6 rounded-full border border-white/10 backdrop-blur-sm" />
+
+        {/* Inner premium glass circle */}
         <motion.div
-          className="absolute inset-0 rounded-full border-2 border-indigo-500/30"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-        />
+          className="absolute inset-8 md:inset-10 rounded-full glass border border-white/20 backdrop-blur-xl overflow-hidden"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.5, type: "spring" }}
+        >
+          {/* Animated gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-cyan-500/10" />
 
-        {/* Middle ring with gradient */}
-        <motion.div
-          className="absolute inset-3 md:inset-4 rounded-full"
-          style={{
-            background: `conic-gradient(from 0deg, transparent, rgba(99, 102, 241, 0.5), transparent)`,
-          }}
-          animate={{ rotate: -360 }}
-          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-        />
+          {/* Scanning effect overlay */}
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-t from-transparent via-indigo-500/20 to-transparent"
+            animate={{ y: ["-100%", "100%"] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          />
+        </motion.div>
 
-        {/* Inner glass circle */}
-        <div className="absolute inset-6 md:inset-8 rounded-full glass" />
-
-        {/* Inner scanning ring */}
-        <motion.div
-          className="absolute inset-6 md:inset-8 rounded-full ring-2 ring-indigo-500/50"
-          animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.5, 1, 0.5],
-          }}
-          transition={{ duration: 2, repeat: Infinity }}
-        />
-
-        {/* Center icon */}
+        {/* Center icon with entrance animation */}
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.div
-            animate={{
-              scale: [1, 1.1, 1],
-            }}
-            transition={{ duration: 1.5, repeat: Infinity }}
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ duration: 0.6, type: "spring", delay: 0.2 }}
+            className="relative"
           >
-            <Scan className="h-10 w-10 md:h-12 md:w-12 text-indigo-400" />
+            {/* Icon glow */}
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full blur-xl opacity-50" />
+
+            {/* Icon container */}
+            <div className="relative h-14 w-14 md:h-16 md:w-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-xl">
+              <Sparkles className="h-7 w-7 md:h-8 md:w-8 text-white" />
+            </div>
           </motion.div>
         </div>
 
-        {/* Scanning line */}
-        <motion.div
-          className="absolute left-1/2 top-0 h-full w-0.5 -translate-x-1/2 bg-gradient-to-b from-transparent via-indigo-400 to-transparent"
-          animate={{
-            rotate: [0, 360],
-          }}
-          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-          style={{ originY: "50%" }}
-        />
-
-        {/* Data points */}
-        {[...Array(8)].map((_, i) => (
+        {/* Corner accent dots */}
+        {[0, 1, 2, 3].map((i) => (
           <motion.div
             key={i}
-            className="absolute h-2 w-2 rounded-full bg-indigo-400"
+            className="absolute h-1.5 w-1.5 rounded-full bg-indigo-400"
             style={{
-              top: `${50 + 38 * Math.sin((i * Math.PI) / 4)}%`,
-              left: `${50 + 38 * Math.cos((i * Math.PI) / 4)}%`,
-              transform: "translate(-50%, -50%)",
+              top: i < 2 ? "10%" : "90%",
+              left: i % 2 === 0 ? "10%" : "90%",
             }}
-            animate={{
-              scale: [1, 1.5, 1],
-              opacity: [0.3, 1, 0.3],
-            }}
-            transition={{
-              duration: 1.5,
-              repeat: Infinity,
-              delay: i * 0.2,
-            }}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 0.6 }}
+            transition={{ delay: 0.3 + i * 0.1, duration: 0.4 }}
           />
         ))}
       </div>
 
-      {/* Status text */}
-      <motion.p
-        className="mt-6 md:mt-8 text-base md:text-lg font-medium text-white"
-        animate={{ opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 2, repeat: Infinity }}
+      {/* Status text with gradient */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="text-center mb-6"
       >
-        {status}
-      </motion.p>
+        <p className="text-lg md:text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400">
+          {status}
+        </p>
+      </motion.div>
 
-      {/* Progress bar */}
-      <div className="mt-4 md:mt-6 w-full max-w-xs">
-        <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+      {/* Premium progress bar */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.5 }}
+        className="w-full max-w-sm mb-8"
+      >
+        <div className="relative h-3 w-full overflow-hidden rounded-full bg-white/10 backdrop-blur-sm">
+          {/* Progress fill with gradient */}
           <motion.div
-            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500"
+            className="h-full bg-gradient-to-r from-cyan-500 via-indigo-500 via-purple-500 to-violet-500 relative"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.3 }}
-          />
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            {/* Shine effect */}
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+              animate={{ x: ["-100%", "200%"] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            />
+          </motion.div>
         </div>
 
-        {/* Progress percentage */}
-        <motion.p
-          className="mt-2 text-center text-sm text-white/50"
-          key={progress}
-          initial={{ opacity: 0, y: -10 }}
+        {/* Progress percentage with animation */}
+        <motion.div
+          className="mt-3 flex items-center justify-center gap-2"
+          key={Math.floor(progress / 5)}
+          initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <span className="text-indigo-400 font-medium">{Math.round(progress)}%</span>
-        </motion.p>
-      </div>
+          <span className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+            {Math.round(progress)}%
+          </span>
+        </motion.div>
+      </motion.div>
 
-      {/* Extraction steps */}
-      <div className="mt-6 md:mt-8 space-y-3 w-full max-w-xs">
+      {/* Premium extraction steps */}
+      <div className="w-full max-w-sm space-y-4">
         {steps.map((step, index) => {
           const isComplete = progress >= step.threshold;
           const isActive =
@@ -149,41 +179,67 @@ export function BiometricLoader({
           return (
             <motion.div
               key={step.label}
-              className="flex items-center gap-3"
-              initial={{ opacity: 0, x: -10 }}
+              initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
+              transition={{ delay: 0.6 + index * 0.1, type: "spring" }}
+              className="relative group"
             >
-              <div
-                className={`flex h-6 w-6 items-center justify-center rounded-full transition-all duration-500 ${
-                  isComplete
-                    ? "bg-emerald-500/20 ring-2 ring-emerald-500/50"
-                    : isActive
-                      ? "bg-indigo-500/20 ring-2 ring-indigo-500/50"
-                      : "bg-white/5 ring-1 ring-white/10"
-                }`}
-              >
-                {isComplete ? (
-                  <Check className="h-3 w-3 text-emerald-400" />
-                ) : (
-                  <div
-                    className={`h-2 w-2 rounded-full ${
-                      isActive ? "bg-indigo-400 animate-pulse" : "bg-white/30"
-                    }`}
+              {/* Hover glow */}
+              {isActive && (
+                <div className={`absolute -inset-1 bg-gradient-to-r ${step.gradient} rounded-2xl opacity-20 blur-lg`} />
+              )}
+
+              {/* Step card */}
+              <div className={`relative flex items-center gap-4 p-4 rounded-2xl transition-all duration-500 ${
+                isComplete
+                  ? "glass border border-cyan-500/30 bg-cyan-500/5"
+                  : isActive
+                    ? "glass border border-indigo-500/50 bg-indigo-500/10"
+                    : "glass border border-white/10"
+              }`}>
+                {/* Icon with gradient background */}
+                <div className="relative flex-shrink-0">
+                  {isActive && (
+                    <div className={`absolute -inset-1 bg-gradient-to-r ${step.gradient} rounded-xl blur opacity-50`} />
+                  )}
+
+                  <div className={`relative h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-500 ${
+                    isComplete
+                      ? "bg-gradient-to-r from-cyan-500 to-indigo-500"
+                      : isActive
+                        ? `bg-gradient-to-r ${step.gradient}`
+                        : "bg-white/5"
+                  }`}>
+                    {isComplete ? (
+                      <Check className="h-5 w-5 text-white" />
+                    ) : (
+                      <step.icon className={`h-5 w-5 ${isActive ? "text-white" : "text-white/40"}`} />
+                    )}
+                  </div>
+                </div>
+
+                {/* Label */}
+                <div className="flex-1">
+                  <span className={`text-sm md:text-base font-semibold transition-colors duration-300 ${
+                    isComplete
+                      ? "text-cyan-400"
+                      : isActive
+                        ? "text-white"
+                        : "text-white/50"
+                  }`}>
+                    {step.label}
+                  </span>
+                </div>
+
+                {/* Status indicator */}
+                {isActive && (
+                  <motion.div
+                    className="h-2 w-2 rounded-full bg-indigo-400"
+                    animate={{ scale: [1, 1.3, 1], opacity: [1, 0.5, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
                   />
                 )}
               </div>
-              <span
-                className={`text-sm transition-colors duration-300 ${
-                  isComplete
-                    ? "text-emerald-400"
-                    : isActive
-                      ? "text-white"
-                      : "text-white/40"
-                }`}
-              >
-                {step.label}
-              </span>
             </motion.div>
           );
         })}

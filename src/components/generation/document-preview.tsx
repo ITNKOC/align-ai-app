@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -30,7 +31,7 @@ interface DocumentPreviewProps {
   isGenerating: boolean;
   generationProgress: number;
   partialSuccess?: boolean;
-  onRegenerate: () => void;
+  onRegenerate: (instructions?: string) => Promise<void>;
   onStartNew: () => void;
 }
 
@@ -46,6 +47,28 @@ export function DocumentPreview({
   onStartNew,
 }: DocumentPreviewProps) {
   const [activeTab, setActiveTab] = useState("cv");
+  const [showRegenerateForm, setShowRegenerateForm] = useState(false);
+  const [regenerateInstructions, setRegenerateInstructions] = useState("");
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const handleRegenerate = async () => {
+    if (!regenerateInstructions.trim() && showRegenerateForm) {
+      toast.error("Veuillez décrire les modifications souhaitées");
+      return;
+    }
+
+    setIsRegenerating(true);
+    try {
+      await onRegenerate(regenerateInstructions.trim() || undefined);
+      setRegenerateInstructions("");
+      setShowRegenerateForm(false);
+      toast.success("Documents régénérés avec succès !");
+    } catch (error) {
+      toast.error("Erreur lors de la régénération");
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
   if (isGenerating) {
     return <GenerationLoader progress={generationProgress} />;
@@ -184,28 +207,137 @@ export function DocumentPreview({
         </AnimatePresence>
       </Tabs>
 
-      {/* Enhanced Action buttons - Mobile First */}
+      {/* Enhanced Regenerate Form - Mobile First */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="mt-4 md:mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3"
+        className="mt-4 md:mt-6 space-y-3"
       >
-        <Button
-          variant="outline"
-          onClick={onRegenerate}
-          className="glass border-white/20 text-white hover:bg-white/10 py-6 text-base font-semibold rounded-xl"
-        >
-          <RefreshCw className="mr-2 h-5 w-5" />
-          Régénérer
-        </Button>
-        <Button
-          onClick={onStartNew}
-          className="btn-futuristic py-6 text-base font-semibold rounded-xl shadow-2xl shadow-indigo-500/50"
-        >
-          <Sparkles className="mr-2 h-5 w-5" />
-          Nouvelle candidature
-        </Button>
+        {/* Regenerate Form */}
+        <AnimatePresence>
+          {showRegenerateForm && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="rounded-2xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 p-4 space-y-3 backdrop-blur-xl">
+                {/* Header */}
+                <div className="flex items-start gap-3">
+                  <motion.div
+                    animate={{ rotate: [0, 360] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    className="flex-shrink-0 mt-1"
+                  >
+                    <Sparkles className="h-5 w-5 text-indigo-400" />
+                  </motion.div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-white text-sm md:text-base">
+                      Régénération intelligente
+                    </h4>
+                    <p className="mt-1 text-xs md:text-sm text-white/60 leading-relaxed">
+                      Décrivez les modifications que vous souhaitez apporter au contenu,
+                      à la forme, au style ou à la structure du document.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Textarea */}
+                <Textarea
+                  value={regenerateInstructions}
+                  onChange={(e) => setRegenerateInstructions(e.target.value)}
+                  placeholder="Ex: Rendre le CV plus moderne avec des couleurs, ajouter une section projets personnels, reformuler l'expérience X de manière plus concise..."
+                  className="min-h-[100px] sm:min-h-[120px] resize-none glass border-indigo-500/30 bg-white/5 text-white placeholder:text-white/40 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-sm md:text-base"
+                  disabled={isRegenerating}
+                  rows={4}
+                />
+
+                {/* Action buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowRegenerateForm(false);
+                      setRegenerateInstructions("");
+                    }}
+                    disabled={isRegenerating}
+                    className="flex-1 glass border-white/20 text-white hover:bg-white/10 rounded-xl"
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    onClick={handleRegenerate}
+                    disabled={isRegenerating}
+                    className="flex-1 btn-futuristic rounded-xl shadow-lg shadow-indigo-500/30"
+                  >
+                    {isRegenerating ? (
+                      <>
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="mr-2"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </motion.div>
+                        Régénération...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Régénérer
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Tips */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-3"
+                >
+                  <p className="text-xs text-indigo-300 leading-relaxed">
+                    💡 <span className="font-semibold">Exemples de modifications :</span>
+                    <br />
+                    • Contenu : "Mettre plus l'accent sur mes compétences en leadership"
+                    <br />
+                    • Style : "Utiliser une police plus moderne et des couleurs subtiles"
+                    <br />
+                    • Structure : "Inverser les sections expérience et formation"
+                    <br />
+                    • Format : "Passer de 2 colonnes à 1 colonne"
+                  </p>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Main action buttons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Button
+            variant="outline"
+            onClick={() => setShowRegenerateForm(!showRegenerateForm)}
+            disabled={isRegenerating}
+            className="glass border-white/20 text-white hover:bg-white/10 py-6 text-base font-semibold rounded-xl group"
+          >
+            <RefreshCw className={cn(
+              "mr-2 h-5 w-5 transition-transform",
+              showRegenerateForm && "rotate-180"
+            )} />
+            {showRegenerateForm ? "Masquer" : "Régénérer avec modifications"}
+          </Button>
+          <Button
+            onClick={onStartNew}
+            className="btn-futuristic py-6 text-base font-semibold rounded-xl shadow-2xl shadow-indigo-500/50"
+          >
+            <Sparkles className="mr-2 h-5 w-5" />
+            Nouvelle candidature
+          </Button>
+        </div>
       </motion.div>
     </motion.div>
   );
@@ -279,37 +411,37 @@ function DocumentCard({
           </p>
         </div>
 
-        {/* Primary action buttons */}
-        {pdfUrl && (
-          <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="glass border-white/20 text-white hover:bg-white/10 rounded-xl py-6"
-            >
-              <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-sm md:text-base font-semibold">Ouvrir</span>
-              </a>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              className="btn-futuristic rounded-xl py-6 shadow-lg shadow-indigo-500/30"
-            >
-              <a href={pdfUrl} download={downloadName}>
-                <Download className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-sm md:text-base font-semibold">Télécharger</span>
-              </a>
-            </Button>
-          </div>
-        )}
+        {/* Primary action buttons - Enhanced with LaTeX copy */}
+        <div className="space-y-2 sm:space-y-3">
+          {/* PDF Actions */}
+          {pdfUrl && (
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="glass border-white/20 text-white hover:bg-white/10 rounded-xl py-6"
+              >
+                <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                  <span className="text-sm md:text-base font-semibold">Ouvrir</span>
+                </a>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                className="btn-futuristic rounded-xl py-6 shadow-lg shadow-indigo-500/30"
+              >
+                <a href={pdfUrl} download={downloadName}>
+                  <Download className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                  <span className="text-sm md:text-base font-semibold">Télécharger</span>
+                </a>
+              </Button>
+            </div>
+          )}
 
-        {/* LaTeX code section - Enhanced */}
-        {latexCode && (
-          <div className="space-y-3">
-            {/* Toggle and copy buttons */}
+          {/* LaTeX Actions - Always visible */}
+          {latexCode && (
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <Button
                 variant="outline"
@@ -325,7 +457,7 @@ function DocumentCard({
                 ) : (
                   <>
                     <Code className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-                    <span className="text-sm md:text-base font-semibold">Voir LaTeX</span>
+                    <span className="text-sm md:text-base font-semibold">Voir Code</span>
                   </>
                 )}
               </Button>
@@ -333,26 +465,32 @@ function DocumentCard({
                 variant="outline"
                 size="lg"
                 className={cn(
-                  "glass border-white/20 hover:bg-white/10 rounded-xl py-6 transition-all",
+                  "glass hover:bg-white/10 rounded-xl py-6 transition-all font-semibold",
                   copied
-                    ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400"
-                    : "text-white"
+                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-lg shadow-emerald-500/20"
+                    : "border-indigo-500/30 text-indigo-300 hover:border-indigo-500/50"
                 )}
                 onClick={handleCopy}
               >
                 {copied ? (
                   <>
                     <Check className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-                    <span className="text-sm md:text-base font-semibold">Copié !</span>
+                    <span className="text-sm md:text-base">Copié !</span>
                   </>
                 ) : (
                   <>
                     <Copy className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-                    <span className="text-sm md:text-base font-semibold">Copier</span>
+                    <span className="text-sm md:text-base">Copier LaTeX</span>
                   </>
                 )}
               </Button>
             </div>
+          )}
+        </div>
+
+        {/* LaTeX code section - Enhanced */}
+        {latexCode && (
+          <div className="space-y-3">
 
             {/* LaTeX code display */}
             <AnimatePresence>

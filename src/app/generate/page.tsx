@@ -113,7 +113,7 @@ export default function GeneratePage() {
     }
   };
 
-  const handleRegenerate = useCallback(async () => {
+  const handleRegenerate = useCallback(async (instructions?: string) => {
     if (!applicationId) return;
 
     // Clear existing URLs and data
@@ -136,7 +136,7 @@ export default function GeneratePage() {
     }, 500);
 
     try {
-      const result = await regenerateDocuments(applicationId);
+      const result = await regenerateDocuments(applicationId, instructions);
 
       clearInterval(progressInterval);
       setGenerationProgress(100);

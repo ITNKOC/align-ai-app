@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { generateLatexDocuments } from "@/lib/gemini";
-import { getDocumentGenerationPrompt } from "@/lib/prompts";
+import { getDocumentGenerationPrompt, getLatexRegenerationPrompt } from "@/lib/prompts";
 import { compileDocuments } from "@/lib/latex-compiler";
 import type { CVData, AnalysisResult, Strategy } from "@/lib/types";
 
@@ -150,22 +150,101 @@ export async function getGeneratedDocuments(applicationId: string) {
 }
 
 export async function regenerateDocuments(
-  applicationId: string
+  applicationId: string,
+  instructions?: string
 ): Promise<GenerationResult> {
   try {
-    // Reset status and regenerate
-    await prisma.application.update({
+    // Get application data
+    const application = await prisma.application.findUnique({
       where: { id: applicationId },
-      data: {
-        status: "strategies_complete",
-        finalCvLatex: null,
-        finalCoverLatex: null,
-        finalCvPdf: null,
-        finalCoverPdf: null,
+      include: {
+        jobOffer: {
+          include: {
+            masterProfile: true,
+          },
+        },
       },
     });
 
-    return generateDocuments(applicationId);
+    if (!application) {
+      return { success: false, error: "Application non trouvée" };
+    }
+
+    // If no instructions provided or no existing LaTeX, do full regeneration
+    if (!instructions || !application.finalCvLatex || !application.finalCoverLatex) {
+      await prisma.application.update({
+        where: { id: applicationId },
+        data: {
+          status: "strategies_complete",
+          finalCvLatex: null,
+          finalCoverLatex: null,
+          finalCvPdf: null,
+          finalCoverPdf: null,
+        },
+      });
+
+      return generateDocuments(applicationId);
+    }
+
+    // Intelligent regeneration with user instructions
+    const cvData = application.jobOffer.masterProfile.structuredData as unknown as CVData;
+    const jobDescription = application.jobOffer.rawText;
+
+    // Use the regeneration prompt with instructions
+    const prompt = getLatexRegenerationPrompt(
+      application.finalCvLatex,
+      application.finalCoverLatex,
+      instructions,
+      cvData,
+      jobDescription
+    );
+
+    const generatedDocs = await generateLatexDocuments(prompt);
+
+    // Save modified LaTeX to database
+    await prisma.application.update({
+      where: { id: applicationId },
+      data: {
+        finalCvLatex: generatedDocs.cvLatex,
+        finalCoverLatex: generatedDocs.coverLetterLatex,
+        status: "latex_generated",
+      },
+    });
+
+    // Try to compile LaTeX to PDF
+    try {
+      const { cvPdf, coverPdf } = await compileDocuments(
+        generatedDocs.cvLatex,
+        generatedDocs.coverLetterLatex
+      );
+
+      // Update with PDFs
+      await prisma.application.update({
+        where: { id: applicationId },
+        data: {
+          finalCvPdf: cvPdf as any,
+          finalCoverPdf: coverPdf as any,
+          status: "completed",
+        },
+      });
+
+      return {
+        success: true,
+        cvPdfBase64: cvPdf.toString("base64"),
+        coverPdfBase64: coverPdf.toString("base64"),
+        cvLatex: generatedDocs.cvLatex,
+        coverLetterLatex: generatedDocs.coverLetterLatex,
+      };
+    } catch (pdfError) {
+      console.error("PDF compilation failed, but LaTeX was saved:", pdfError);
+      return {
+        success: false,
+        partialSuccess: true,
+        cvLatex: generatedDocs.cvLatex,
+        coverLetterLatex: generatedDocs.coverLetterLatex,
+        error: "La compilation PDF a échoué. Vous pouvez télécharger les fichiers LaTeX et les compiler localement.",
+      };
+    }
   } catch (error) {
     console.error("Regeneration error:", error);
     return {
