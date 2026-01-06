@@ -4,22 +4,23 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { MessageSquare, Shield } from "lucide-react";
-import { PhaseIndicator } from "@/components/shared/phase-indicator";
-import { PageTransition } from "@/components/shared/page-transition";
+import { MessageSquare, Shield, Loader2 } from "lucide-react";
+import { AppNavbar } from "@/components/shared/app-navbar";
 import { ChatInterface } from "@/components/chat/chat-interface";
 import {
   initializeChat,
   sendChatMessage,
   getChatState,
+  skipAllGaps,
 } from "@/actions/chat-actions";
-import type { ChatMessage, GapAnalysis, Strategy } from "@/lib/types";
+import type { ChatMessage, GapAnalysis, Strategy, GapSlot } from "@/lib/types";
 
 export default function ChatPage() {
   const router = useRouter();
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [gaps, setGaps] = useState<GapAnalysis[]>([]);
+  const [gapSlots, setGapSlots] = useState<GapSlot[]>([]); // v3.0
   const [currentGapIndex, setCurrentGapIndex] = useState(0);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -47,6 +48,7 @@ export default function ChatPage() {
       if (stateResult.success) {
         setMessages(stateResult.chatHistory || []);
         setGaps(stateResult.gaps || []);
+        setGapSlots(stateResult.gapSlots || []); // v3.0
         setCurrentGapIndex(stateResult.currentGapIndex || 0);
         setStrategies(stateResult.strategies || []);
         setIsComplete(stateResult.isComplete || false);
@@ -56,6 +58,16 @@ export default function ChatPage() {
           const initResult = await initializeChat(appId);
           if (initResult.success && initResult.aiMessage) {
             setMessages([initResult.aiMessage]);
+            // v3.0: Check if init returned complete (all gaps auto-filled)
+            if (initResult.isComplete) {
+              setIsComplete(true);
+            }
+          }
+          // Refresh state to get updated gapSlots after pre-analysis
+          const refreshedState = await getChatState(appId);
+          if (refreshedState.success) {
+            setGapSlots(refreshedState.gapSlots || []);
+            setCurrentGapIndex(refreshedState.currentGapIndex || 0);
           }
         }
       } else {
@@ -125,20 +137,37 @@ export default function ChatPage() {
     router.push("/generate");
   }, [router]);
 
+  // v3.0: Handle skip all gaps and go to generation
+  const handleSkipAll = useCallback(async () => {
+    if (!applicationId) return;
+
+    try {
+      const result = await skipAllGaps(applicationId);
+      if (result.success) {
+        toast.success("Documents prêts à être générés !");
+        router.push("/generate");
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Erreur lors du skip"
+      );
+    }
+  }, [applicationId, router]);
+
   if (isLoading) {
     return (
-      <PageTransition className="min-h-screen safe-top safe-bottom">
-        <div className="mx-auto max-w-4xl px-4 py-6 md:py-8">
-          <PhaseIndicator currentPhase={3} />
-          <div className="mt-16 md:mt-20 flex flex-col items-center justify-center">
-            {/* Loading animation */}
-            <div className="relative h-20 w-20 md:h-24 md:w-24">
+      <div className="min-h-screen pb-20 md:pb-8">
+        <AppNavbar />
+        <main className="container-app py-6">
+          <div className="mt-16 flex flex-col items-center justify-center">
+            <div className="relative w-20 h-20">
               <motion.div
                 className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl"
-                animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.3, 0.6, 0.3],
-                }}
+                animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
                 transition={{ duration: 2, repeat: Infinity }}
               />
               <motion.div
@@ -146,52 +175,51 @@ export default function ChatPage() {
                 animate={{ rotate: 360 }}
                 transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
               />
-              <div className="absolute inset-3 md:inset-4 rounded-full glass flex items-center justify-center">
-                <MessageSquare className="h-8 w-8 md:h-10 md:w-10 text-indigo-400" />
+              <div className="absolute inset-3 rounded-full bg-white/5 flex items-center justify-center">
+                <MessageSquare className="w-8 h-8 text-indigo-400" />
               </div>
             </div>
-            <motion.p
-              className="mt-6 text-base md:text-lg font-medium text-white"
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              Chargement du chat...
-            </motion.p>
+            <p className="mt-4 text-white/70">Chargement du chat...</p>
           </div>
-        </div>
-      </PageTransition>
+        </main>
+      </div>
     );
   }
 
   return (
-    <PageTransition className="min-h-screen safe-top safe-bottom flex flex-col">
-      <div className="mx-auto w-full max-w-4xl px-4 py-4 md:py-6 flex flex-col flex-1">
-        <PhaseIndicator currentPhase={3} />
+    <div className="min-h-screen pb-20 md:pb-8 flex flex-col">
+      <AppNavbar />
+      <main className="container-app py-4 flex flex-col flex-1 min-h-0">
+        {/* Header */}
+        <div className="text-center mb-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <span className="badge badge-primary mb-2">Etape 3</span>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">
+              Chat <span className="gradient-text">strategique</span>
+            </h1>
+            <p className="text-sm text-white/50 mt-1">
+              Explorez vos competences pour combler les gaps
+            </p>
+          </motion.div>
+        </div>
 
+        {/* Chat Interface */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 md:mt-6 text-center"
-        >
-          <h1 className="text-2xl md:text-3xl font-bold text-white">
-            Chat <span className="gradient-text">stratégique</span>
-          </h1>
-          <p className="mt-2 text-sm md:text-base text-white/50">
-            Explorez vos compétences pour combler les gaps identifiés
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mt-4 md:mt-6 flex-1 min-h-0 overflow-hidden rounded-2xl glass border border-white/10"
+          transition={{ delay: 0.1 }}
+          className="flex-1 min-h-0 overflow-hidden card-modern"
         >
           <ChatInterface
             messages={messages}
             onSendMessage={handleSendMessage}
+            onSkipAll={handleSkipAll}
             isTyping={isTyping}
             gaps={gaps}
+            gapSlots={gapSlots}
             currentGapIndex={currentGapIndex}
             strategies={strategies}
             onComplete={handleComplete}
@@ -199,31 +227,27 @@ export default function ChatPage() {
           />
         </motion.div>
 
-        {/* Info box - Hidden on mobile to save space */}
+        {/* Info box - Hidden on mobile */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="hidden md:block mt-4 rounded-xl glass border border-indigo-500/20 p-4"
+          transition={{ delay: 0.2 }}
+          className="hidden md:flex mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 items-start gap-3"
         >
-          <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-indigo-500/20 p-2">
-              <Shield className="h-4 w-4 text-indigo-400" />
-            </div>
-            <div>
-              <h3 className="font-medium text-white">
-                Pourquoi ce chat ?
-              </h3>
-              <p className="mt-1 text-sm text-white/60">
-                Notre IA explore vos expériences pour trouver des compétences
-                transférables. Si vous n&apos;avez pas une compétence, elle vous aidera
-                à mettre en avant votre capacité d&apos;apprentissage - sans jamais
-                inventer de faits.
-              </p>
-            </div>
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+            <Shield className="w-4 h-4 text-indigo-400" />
+          </div>
+          <div>
+            <h3 className="font-medium text-white text-sm">Pourquoi ce chat ?</h3>
+            <p className="mt-1 text-xs text-white/60">
+              Notre IA explore vos experiences pour trouver des competences
+              transferables. Si vous n&apos;avez pas une competence, elle vous aidera
+              a mettre en avant votre capacite d&apos;apprentissage - sans jamais
+              inventer de faits.
+            </p>
           </div>
         </motion.div>
-      </div>
-    </PageTransition>
+      </main>
+    </div>
   );
 }

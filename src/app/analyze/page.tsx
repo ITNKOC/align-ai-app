@@ -4,14 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { ArrowRight, Search, Sparkles, Target } from "lucide-react";
-import { PhaseIndicator } from "@/components/shared/phase-indicator";
-import { PageTransition } from "@/components/shared/page-transition";
+import { ArrowRight, Search, Sparkles, Target, Loader2, Link2 } from "lucide-react";
+import { AppNavbar } from "@/components/shared/app-navbar";
 import { AnimatedCard } from "@/components/shared/animated-card";
 import { ScoreGauge } from "@/components/analysis/score-gauge";
 import { GapList, KeywordCloud } from "@/components/analysis/gap-list";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { analyzeJobOffer } from "@/actions/analysis-actions";
 import type { AnalysisResult } from "@/lib/types";
 
@@ -19,6 +16,7 @@ export default function AnalyzePage() {
   const router = useRouter();
   const [profileId, setProfileId] = useState<string | null>(null);
   const [jobDescription, setJobDescription] = useState("");
+  const [jobUrl, setJobUrl] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
     null
@@ -44,7 +42,7 @@ export default function AnalyzePage() {
     setIsAnalyzing(true);
 
     try {
-      const result = await analyzeJobOffer(profileId, jobDescription);
+      const result = await analyzeJobOffer(profileId, jobDescription, jobUrl || undefined);
 
       if (result.success && result.analysisResult) {
         setAnalysisResult(result.analysisResult);
@@ -72,260 +70,164 @@ export default function AnalyzePage() {
   };
 
   return (
-    <PageTransition className="min-h-screen safe-top safe-bottom relative overflow-hidden">
-      {/* Premium background effects */}
-      <div className="absolute inset-0 pointer-events-none">
-        <motion.div
-          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1 }}
-        />
-        <motion.div
-          className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-[120px]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 0.2 }}
-        />
-      </div>
-
-      <div className="mx-auto max-w-6xl px-4 py-6 md:py-8 relative">
-        <PhaseIndicator currentPhase={2} />
-
-        {/* Premium Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mt-8 md:mt-12 text-center"
-        >
-          {/* Badge */}
+    <div className="min-h-screen pb-20 md:pb-8">
+      <AppNavbar />
+      <main className="container-app py-6">
+        {/* Header */}
+        <div className="page-header text-center">
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1, type: "spring" }}
-            className="inline-flex items-center gap-2 rounded-full glass border border-white/10 backdrop-blur-xl px-4 py-2 mb-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
           >
-            <div className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" />
-            <span className="text-sm font-semibold text-white/80">Phase 2 - Analyse Compatibilité</span>
+            <span className="badge badge-primary mb-4">Etape 2</span>
+            <h1 className="page-title text-2xl sm:text-3xl md:text-4xl">
+              Analysez l&apos;<span className="gradient-text">offre d&apos;emploi</span>
+            </h1>
+            <p className="page-subtitle mt-2 max-w-md mx-auto">
+              Collez le texte de l&apos;offre pour obtenir votre score de compatibilite
+            </p>
           </motion.div>
-
-          {/* Title */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight mb-4">
-            Analysez l&apos;
-            <span className="relative inline-block">
-              <span className="gradient-text">offre d&apos;emploi</span>
-              <motion.div
-                className="absolute -bottom-2 left-0 right-0 h-1 md:h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 rounded-full"
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ delay: 0.5, duration: 0.8 }}
-              />
-            </span>
-          </h1>
-
-          {/* Description */}
-          <p className="text-base sm:text-lg md:text-xl text-white/70 max-w-2xl mx-auto">
-            Collez le texte de l&apos;offre pour obtenir votre{" "}
-            <span className="text-white font-bold">score de compatibilité</span>
-          </p>
-        </motion.div>
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className={`mt-10 md:mt-16 ${
+          transition={{ delay: 0.1 }}
+          className={`mt-8 ${
             analysisResult || isAnalyzing
               ? "grid gap-6 lg:grid-cols-2"
               : "flex justify-center"
           }`}
         >
-          {/* Left column - Premium Input Card */}
-          <div className={`relative group h-fit ${
-            !analysisResult && !isAnalyzing ? "w-full max-w-3xl" : ""
-          }`}>
-            {/* Hover glow */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[28px] opacity-0 group-hover:opacity-20 blur-xl transition-all duration-500" />
-
-            {/* Card */}
-            <div className={`relative glass rounded-[28px] border border-white/10 backdrop-blur-xl overflow-hidden ${
-              !analysisResult && !isAnalyzing ? "p-8 md:p-10" : "p-6 md:p-8"
-            }`}>
-              {/* Top gradient accent */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
-
+          {/* Left column - Input Card */}
+          <div className={`${!analysisResult && !isAnalyzing ? "w-full max-w-2xl" : ""}`}>
+            <div className="card-modern p-5 md:p-6">
               {/* Header */}
-              <div className="flex items-center gap-4 mb-6">
-                <div className="relative">
-                  {/* Icon glow */}
-                  <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl blur opacity-40" />
-
-                  {/* Icon container with border */}
-                  <div className="relative h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 p-[2px]">
-                    <div className="h-full w-full rounded-2xl glass flex items-center justify-center backdrop-blur-xl">
-                      <Search className="h-6 w-6 text-indigo-400" />
-                    </div>
-                  </div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                  <Search className="w-5 h-5 text-indigo-400" />
                 </div>
-
                 <div>
-                  <h2 className="text-xl font-bold text-white">
-                    Offre d&apos;emploi
-                  </h2>
-                  <p className="text-sm text-white/60">
-                    Copiez-collez le texte complet
-                  </p>
+                  <h2 className="font-semibold text-white">Offre d&apos;emploi</h2>
+                  <p className="text-xs text-white/50">Copiez-collez le texte complet</p>
                 </div>
               </div>
 
+              {/* URL Input */}
+              <div className="mb-4">
+                <label className="flex items-center gap-2 text-xs text-white/50 mb-2">
+                  <Link2 className="w-3 h-3" />
+                  Lien vers l&apos;offre (optionnel)
+                </label>
+                <input
+                  type="url"
+                  value={jobUrl}
+                  onChange={(e) => setJobUrl(e.target.value)}
+                  placeholder="https://www.linkedin.com/jobs/view/..."
+                  className="input-modern w-full h-10 text-sm"
+                  disabled={isAnalyzing || !!analysisResult}
+                />
+              </div>
+
               {/* Textarea */}
-              <Textarea
+              <textarea
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
                 placeholder="Collez ici le texte de l'offre d'emploi...
 
 Exemple:
-Nous recherchons un Développeur Full Stack pour rejoindre notre équipe...
+Nous recherchons un Developpeur Full Stack...
 
-Compétences requises:
+Competences requises:
 - React, Node.js
 - PostgreSQL
 - Docker..."
-                className={`resize-none glass border-white/20 bg-white/5 text-white placeholder:text-white/40 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 rounded-2xl text-base ${
+                className={`input-modern resize-none w-full ${
                   !analysisResult && !isAnalyzing
-                    ? "min-h-[350px] md:min-h-[450px]"
-                    : "min-h-[280px] md:min-h-[350px]"
+                    ? "min-h-[300px] md:min-h-[400px]"
+                    : "min-h-[200px] md:min-h-[280px]"
                 }`}
                 disabled={isAnalyzing || !!analysisResult}
               />
 
               {/* Character count */}
               {jobDescription && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="mt-3 text-xs text-white/40 text-right"
-                >
-                  {jobDescription.length} caractères
-                </motion.p>
+                <p className="mt-2 text-xs text-white/40 text-right">
+                  {jobDescription.length} caracteres
+                </p>
               )}
 
               {/* Button */}
               {!analysisResult && (
-                <Button
+                <button
                   onClick={handleAnalyze}
                   disabled={isAnalyzing || !jobDescription.trim()}
-                  className="mt-6 w-full btn-futuristic py-7 text-base md:text-lg font-bold shadow-2xl shadow-indigo-500/50"
+                  className="btn-primary w-full mt-4 py-3 disabled:opacity-50"
                 >
                   {isAnalyzing ? (
                     <>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="mr-2 h-5 w-5 rounded-full border-2 border-white border-t-transparent"
-                      />
+                      <Loader2 className="w-5 h-5 animate-spin" />
                       Analyse en cours...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="mr-2 h-5 w-5" />
+                      <Sparkles className="w-5 h-5" />
                       Analyser l&apos;offre
                     </>
                   )}
-                </Button>
+                </button>
               )}
-
-              {/* Bottom shine */}
-              <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
             </div>
           </div>
 
           {/* Right column - Results */}
           <div className="space-y-6">
             {isAnalyzing && (
-              <div className="relative glass rounded-[28px] p-8 md:p-12 border border-white/10 backdrop-blur-xl overflow-hidden">
-                {/* Top accent */}
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
-
+              <div className="card-modern p-8 md:p-10">
                 <div className="flex flex-col items-center justify-center">
-                  {/* Premium scanning animation */}
-                  <div className="relative h-32 w-32 md:h-40 md:w-40 mb-8">
-                    {/* Static glow */}
+                  {/* Loading animation */}
+                  <div className="relative w-24 h-24 mb-6">
                     <motion.div
-                      className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-cyan-500/20 blur-3xl"
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.8 }}
+                      className="absolute inset-0 rounded-full bg-indigo-500/20 blur-xl"
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                      transition={{ duration: 2, repeat: Infinity }}
                     />
-
-                    {/* Outer ring */}
-                    <div className="absolute inset-0 rounded-full border-2 border-white/10" />
-
-                    {/* Animated scanning overlay */}
                     <motion.div
-                      className="absolute inset-3 rounded-full glass border border-indigo-500/30 overflow-hidden backdrop-blur-xl"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ duration: 0.5, type: "spring" }}
-                    >
-                      {/* Gradient background */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-cyan-500/10" />
-
-                      {/* Vertical scanning line */}
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-500/30 to-transparent"
-                        animate={{ y: ["-100%", "100%"] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                      />
-                    </motion.div>
-
-                    {/* Center icon */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <motion.div
-                        initial={{ scale: 0, rotate: -180 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        transition={{ duration: 0.6, type: "spring", delay: 0.3 }}
-                        className="relative"
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full blur-lg opacity-50" />
-                        <div className="relative h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-xl">
-                          <Target className="h-6 w-6 md:h-7 md:w-7 text-white" />
-                        </div>
-                      </motion.div>
+                      className="absolute inset-0 rounded-full border-2 border-indigo-500/30"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                    />
+                    <div className="absolute inset-3 rounded-full bg-white/5 flex items-center justify-center">
+                      <Target className="w-10 h-10 text-indigo-400" />
                     </div>
                   </div>
 
-                  {/* Status text */}
-                  <p className="text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400 mb-3">
-                    Analyse de la compatibilité...
+                  <p className="text-lg font-semibold text-white mb-1">
+                    Analyse en cours...
                   </p>
-                  <p className="text-base text-white/60">
+                  <p className="text-sm text-white/50">
                     Comparaison avec votre profil
                   </p>
                 </div>
-
-                {/* Bottom shine */}
-                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-purple-500 to-transparent" />
               </div>
             )}
 
             {analysisResult && (
               <>
                 {/* Score */}
-                <AnimatedCard className="flex flex-col items-center py-8 md:py-10">
-                  <h2 className="mb-6 md:mb-8 text-xl font-bold text-white">
-                    Score de compatibilité
+                <AnimatedCard className="card-modern flex flex-col items-center p-6 md:p-8">
+                  <h2 className="mb-4 text-lg font-semibold text-white">
+                    Score de compatibilite
                   </h2>
                   <ScoreGauge score={analysisResult.score} />
 
                   {analysisResult.jobTitle && (
-                    <div className="mt-6 md:mt-8 text-center">
-                      <p className="text-lg font-bold text-white mb-1">
+                    <div className="mt-4 text-center">
+                      <p className="font-semibold text-white">
                         {analysisResult.jobTitle}
                       </p>
                       {analysisResult.company && (
-                        <p className="text-sm text-white/60">
+                        <p className="text-sm text-white/50">
                           {analysisResult.company}
                         </p>
                       )}
@@ -334,12 +236,12 @@ Compétences requises:
                 </AnimatedCard>
 
                 {/* Gaps */}
-                <AnimatedCard delay={0.1}>
+                <AnimatedCard delay={0.1} className="card-modern p-5">
                   <GapList gaps={analysisResult.gaps} />
                 </AnimatedCard>
 
                 {/* Keywords */}
-                <AnimatedCard delay={0.2}>
+                <AnimatedCard delay={0.2} className="card-modern p-5">
                   <KeywordCloud
                     keywords={analysisResult.keywords}
                     matchedSkills={analysisResult.matchedSkills}
@@ -350,28 +252,24 @@ Compétences requises:
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
+                  transition={{ delay: 0.3 }}
                 >
-                  <Button
+                  <button
                     onClick={handleContinue}
-                    className="w-full btn-futuristic py-7 text-base md:text-lg font-bold shadow-2xl shadow-indigo-500/50"
-                    size="lg"
+                    className="btn-primary w-full py-3"
                   >
-                    <span className="flex items-center justify-center gap-3">
-                      <span>Continuer vers le chat stratégique</span>
-                      <ArrowRight className="h-5 w-5" />
-                    </span>
-                  </Button>
-                  <p className="mt-4 text-center text-sm text-white/60 leading-relaxed">
-                    Explorez vos compétences pour{" "}
-                    <span className="text-white font-semibold">combler les gaps</span> identifiés
+                    Continuer vers le chat
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                  <p className="mt-3 text-center text-xs text-white/50">
+                    Explorez vos competences pour combler les gaps identifies
                   </p>
                 </motion.div>
               </>
             )}
           </div>
         </motion.div>
-      </div>
-    </PageTransition>
+      </main>
+    </div>
   );
 }

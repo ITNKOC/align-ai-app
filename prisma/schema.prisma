@@ -7,42 +7,157 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== USER & AUTH ====================
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  password       String          // Hashed password
+  fullName       String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  masterProfiles MasterProfile[]
+
+  @@index([email])
+}
+
+// ==================== CV PROFILES ====================
+
 model MasterProfile {
   id             String     @id @default(cuid())
+  userId         String
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // CV Data
+  name           String     @default("Mon CV") // Profile name for identification
   rawText        String     @db.Text
-  structuredData Json
+  structuredData Json       // CVData
+  fileName       String?    // Original file name
+  fileSize       Int?       // File size in bytes
+
+  // Default profile
+  isDefault      Boolean    @default(true)
+
+  // Metadata
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
+
+  // Relations
   jobOffers      JobOffer[]
+
+  @@index([userId])
 }
+
+// ==================== JOB OFFERS ====================
 
 model JobOffer {
   id              String        @id @default(cuid())
   masterProfileId String
   masterProfile   MasterProfile @relation(fields: [masterProfileId], references: [id], onDelete: Cascade)
+
+  // Job Details
   rawText         String        @db.Text
   title           String?
   company         String?
+  location        String?
+  jobUrl          String?       // URL of the job posting
   requiredSkills  String[]
-  analysisResult  Json?
+
+  // Analysis
+  analysisResult  Json?         // AnalysisResult with all gaps
+
+  // Metadata
   createdAt       DateTime      @default(now())
+
+  // Relations
   applications    Application[]
+
+  @@index([masterProfileId])
 }
+
+// ==================== APPLICATIONS ====================
+
+// Application status enum-like values
+// "draft" - Initial state, documents not generated
+// "analyzing" - CV analysis in progress
+// "chatting" - Strategic chat in progress
+// "strategies_complete" - Ready for document generation
+// "documents_ready" - CV and cover letter generated
+// "applied" - User marked as applied
+// "interview_scheduled" - Interview scheduled
+// "interview_done" - Interview completed
+// "offer_received" - Received job offer
+// "accepted" - Accepted the offer
+// "rejected" - Rejected by company or declined offer
+// "withdrawn" - User withdrew application
 
 model Application {
   id              String   @id @default(cuid())
   jobOfferId      String
   jobOffer        JobOffer @relation(fields: [jobOfferId], references: [id], onDelete: Cascade)
+
+  // Status tracking
   status          String   @default("analyzing")
-  chatHistory     Json     @default("[]")
-  strategies      Json     @default("{}")
+
+  // Application tracking (new fields)
+  appliedAt       DateTime?              // When user marked as applied
+  appliedVia      String?                // "email", "linkedin", "company_website", "other"
+  applicationNotes String?  @db.Text     // User notes about the application
+
+  // Interview tracking
+  interviewDate   DateTime?
+  interviewType   String?                // "phone", "video", "onsite", "technical"
+  interviewNotes  String?  @db.Text
+
+  // Response tracking
+  responseDate    DateTime?
+  responseNotes   String?  @db.Text
+
+  // Salary info (if offer received)
+  salaryOffered   String?
+
+  // Follow-up tracking
+  lastFollowUpAt  DateTime?
+  nextFollowUpAt  DateTime?
+  followUpCount   Int      @default(0)
+
+  // Chat & Conversation
+  chatHistory     Json     @default("[]")     // ChatMessage[]
+
+  // Slot Filling System (v2.0)
+  gapSlots        Json     @default("[]")     // GapSlot[]
+  currentGapIndex Int      @default(0)
+
+  // Task Memory Tree
+  taskMemory      Json     @default("{}")     // TaskMemoryTree
+  conversationSummary String? @db.Text
+
+  // Strategies
+  strategies      Json     @default("{}")     // Record<skill, Strategy>
+
+  // Legacy fields
   gapsAddressed   Int      @default(0)
-  totalGaps       Int      @default(3)
+  totalGaps       Int      @default(0)
   gapStartIndex   Int      @default(0)
+
+  // Generated Documents - CV
+  documentCreatedAt DateTime?              // Date shown on CV/cover letter (sync with appliedAt)
   finalCvLatex    String?  @db.Text
-  finalCoverLatex String?  @db.Text
   finalCvPdf      Bytes?
+
+  // Generated Documents - Cover Letter
+  finalCoverLatex String?  @db.Text
   finalCoverPdf   Bytes?
+
+  // Generated Documents - Follow-up Email
+  followUpEmail   Json?                       // FollowUpEmail object
+
+  // Metadata
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([jobOfferId])
+  @@index([status])
 }

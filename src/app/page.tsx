@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Upload,
   Search,
@@ -21,11 +23,25 @@ import {
   Linkedin,
   Mail,
   HelpCircle,
+  LogIn,
+  LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getSession } from "@/actions/auth-actions";
 
 export default function HomePage() {
   const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const session = await getSession();
+      setIsLoggedIn(!!session);
+      setIsCheckingAuth(false);
+    };
+    checkAuth();
+  }, []);
 
   const features = [
     {
@@ -141,8 +157,57 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen overflow-x-hidden">
+      {/* Navigation Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 px-4 py-4">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex items-center justify-between p-4 rounded-2xl glass border border-white/10 backdrop-blur-xl">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500">
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-white hidden sm:block">Align.ai</span>
+            </Link>
+
+            {/* Auth Buttons */}
+            <div className="flex items-center gap-3">
+              {!isCheckingAuth && (
+                isLoggedIn ? (
+                  <Link href="/dashboard">
+                    <Button
+                      variant="outline"
+                      className="glass border-white/20 hover:border-indigo-500/50 text-white hover:bg-white/10"
+                    >
+                      <LayoutDashboard className="h-4 w-4 mr-2" />
+                      Dashboard
+                    </Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/login">
+                      <Button
+                        variant="ghost"
+                        className="text-white/70 hover:text-white hover:bg-white/10"
+                      >
+                        <LogIn className="h-4 w-4 mr-2" />
+                        Connexion
+                      </Button>
+                    </Link>
+                    <Link href="/register">
+                      <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:opacity-90">
+                        S&apos;inscrire
+                      </Button>
+                    </Link>
+                  </>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section - PREMIUM PERFECTION */}
-      <section className="relative min-h-screen flex items-center justify-center px-4 py-20 md:py-24 overflow-hidden">
+      <section className="relative min-h-screen flex items-center justify-center px-4 py-20 md:py-24 overflow-hidden pt-32">
         {/* Epic Static Background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {/* Static gradient orbs with entrance animation */}
@@ -296,12 +361,21 @@ export default function HomePage() {
 
               <Button
                 size="lg"
-                onClick={() => router.push("/upload")}
+                onClick={() => router.push(isLoggedIn ? "/dashboard" : "/register")}
                 className="relative w-full btn-futuristic text-base sm:text-lg md:text-xl lg:text-2xl px-8 sm:px-12 md:px-16 py-6 sm:py-7 md:py-9 shadow-2xl shadow-indigo-500/50 hover:shadow-indigo-500/80 font-black rounded-[20px] overflow-hidden transition-all"
               >
                 <span className="relative flex items-center justify-center gap-3 md:gap-4">
-                  <Sparkles className="h-5 w-5 md:h-6 md:w-6" />
-                  <span>Commencer gratuitement</span>
+                  {isLoggedIn ? (
+                    <>
+                      <LayoutDashboard className="h-5 w-5 md:h-6 md:w-6" />
+                      <span>Accéder au Dashboard</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5 md:h-6 md:w-6" />
+                      <span>Commencer gratuitement</span>
+                    </>
+                  )}
                   <ArrowRight className="h-5 w-5 md:h-6 md:w-6 group-hover:translate-x-1 transition-transform" />
                 </span>
               </Button>
@@ -1641,11 +1715,11 @@ export default function HomePage() {
 
                   <Button
                     size="lg"
-                    onClick={() => router.push("/upload")}
+                    onClick={() => router.push(isLoggedIn ? "/upload" : "/register")}
                     className="relative w-full btn-futuristic text-sm sm:text-base md:text-xl lg:text-2xl px-6 sm:px-10 md:px-16 lg:px-20 py-5 sm:py-6 md:py-8 lg:py-10 shadow-2xl shadow-indigo-500/50 hover:shadow-indigo-500/80 transition-all group overflow-hidden rounded-[18px] md:rounded-[20px]"
                   >
                     <span className="relative flex items-center justify-center gap-2 sm:gap-3 md:gap-4">
-                      <span className="font-bold">Créer ma première candidature</span>
+                      <span className="font-bold">{isLoggedIn ? "Créer une candidature" : "Créer ma première candidature"}</span>
                       <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 lg:h-7 lg:w-7 group-hover:translate-x-1 transition-transform flex-shrink-0" />
                     </span>
                   </Button>

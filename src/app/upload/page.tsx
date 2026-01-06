@@ -1,243 +1,435 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { PhaseIndicator } from "@/components/shared/phase-indicator";
-import { PageTransition } from "@/components/shared/page-transition";
-import { CVDropzone } from "@/components/upload/cv-dropzone";
-import { BiometricLoader } from "@/components/upload/biometric-loader";
+import { useDropzone } from "react-dropzone";
+import {
+  Upload,
+  FileText,
+  Shield,
+  Zap,
+  Loader2,
+  CheckCircle,
+  X,
+  ArrowRight,
+  User,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
+import { AppNavbar } from "@/components/shared/app-navbar";
 import { uploadAndParseCV } from "@/actions/cv-actions";
-import { FileText, Shield, Zap } from "lucide-react";
+import { hasExistingCV, uploadCV } from "@/actions/profile-actions";
+import { getSession } from "@/actions/auth-actions";
+import type { CVData } from "@/lib/types";
 
 export default function UploadPage() {
   const router = useRouter();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [hasCV, setHasCV] = useState(false);
+  const [existingProfileId, setExistingProfileId] = useState<string | null>(null);
+  const [existingCVData, setExistingCVData] = useState<CVData | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState("Préparation...");
+  const [status, setStatus] = useState("Preparation...");
+  const [showUploadNew, setShowUploadNew] = useState(false);
 
-  const handleFileSelect = async (file: File) => {
+  useEffect(() => {
+    const checkAuth = async () => {
+      const session = await getSession();
+      if (!session) {
+        toast.error("Vous devez etre connecte");
+        router.push("/login");
+        return;
+      }
+
+      // Check if user has existing CV
+      const cvCheck = await hasExistingCV();
+      if (cvCheck.success && cvCheck.hasCV && cvCheck.profileId) {
+        setHasCV(true);
+        setExistingProfileId(cvCheck.profileId);
+        setExistingCVData(cvCheck.cvData || null);
+      }
+
+      setIsCheckingAuth(false);
+    };
+    checkAuth();
+  }, [router]);
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      if (file.type !== "application/pdf") {
+        toast.error("Seuls les fichiers PDF sont acceptes");
+        return;
+      }
+      setSelectedFile(file);
+    }
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { "application/pdf": [".pdf"] },
+    maxFiles: 1,
+    disabled: isUploading,
+  });
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+
     setIsUploading(true);
     setProgress(0);
 
-    // Simulate progress updates
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 90) return prev;
-        const increment = Math.random() * 15;
-        return Math.min(prev + increment, 90);
+        return Math.min(prev + Math.random() * 15, 90);
       });
     }, 500);
 
-    // Update status messages
     setTimeout(() => setStatus("Extraction du texte..."), 500);
     setTimeout(() => setStatus("Analyse par l'IA..."), 2000);
     setTimeout(() => setStatus("Structuration du profil..."), 4000);
 
     try {
       const formData = new FormData();
-      formData.append("cv", file);
+      formData.append("cv", selectedFile);
 
-      const result = await uploadAndParseCV(formData);
+      // Use the new uploadCV that saves to profile
+      const result = await uploadCV(formData);
 
       clearInterval(progressInterval);
 
       if (result.success && result.profileId) {
         setProgress(100);
-        setStatus("Analyse terminée !");
-
-        toast.success("CV analysé avec succès !");
-
-        // Store profile ID for next steps
+        setStatus("Analyse terminee !");
+        toast.success("CV analyse et sauvegarde !");
         localStorage.setItem("currentProfileId", result.profileId);
 
-        // Navigate to analysis page
         setTimeout(() => {
           router.push("/analyze");
-        }, 1000);
+        }, 800);
       } else {
-        throw new Error(result.error || "Échec de l'analyse");
+        throw new Error(result.error || "Echec de l'analyse");
       }
     } catch (error) {
       clearInterval(progressInterval);
       setIsUploading(false);
       setProgress(0);
+      setSelectedFile(null);
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Une erreur est survenue lors de l'analyse"
+        error instanceof Error ? error.message : "Une erreur est survenue"
       );
     }
   };
 
+  const handleUseExistingCV = () => {
+    if (existingProfileId) {
+      localStorage.setItem("currentProfileId", existingProfileId);
+      router.push("/analyze");
+    }
+  };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+      </div>
+    );
+  }
+
   const tips = [
-    {
-      icon: FileText,
-      text: "Utilisez un CV au format PDF standard (pas de scan d'image)",
-    },
-    {
-      icon: Shield,
-      text: "Assurez-vous que le texte est sélectionnable dans votre PDF",
-    },
-    {
-      icon: Zap,
-      text: "Un CV en français ou anglais sera mieux analysé",
-    },
+    { icon: FileText, text: "Utilisez un CV au format PDF standard" },
+    { icon: Shield, text: "Le texte doit etre selectionnable" },
+    { icon: Zap, text: "Francais ou anglais recommande" },
   ];
 
   return (
-    <PageTransition className="min-h-screen safe-top safe-bottom relative overflow-hidden">
-      {/* Premium background effects */}
-      <div className="absolute inset-0 pointer-events-none">
-        <motion.div
-          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1 }}
-        />
-        <motion.div
-          className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-[120px]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 0.2 }}
-        />
-      </div>
+    <div className="min-h-screen pb-20 md:pb-8">
+      <AppNavbar />
 
-      <div className="mx-auto max-w-4xl px-4 py-6 md:py-8 relative">
-        <PhaseIndicator currentPhase={1} />
-
-        {/* Premium Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mt-8 md:mt-12 text-center"
-        >
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1, type: "spring" }}
-            className="inline-flex items-center gap-2 rounded-full glass border border-white/10 backdrop-blur-xl px-4 py-2 mb-6"
-          >
-            <div className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" />
-            <span className="text-sm font-semibold text-white/80">Phase 1 - Analyse CV</span>
-          </motion.div>
-
-          {/* Title */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight mb-4">
-            Uploadez votre{" "}
-            <span className="relative inline-block">
-              <span className="gradient-text">CV</span>
-              <motion.div
-                className="absolute -bottom-2 left-0 right-0 h-1 md:h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 rounded-full"
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ delay: 0.5, duration: 0.8 }}
-              />
-            </span>
-          </h1>
-
-          {/* Description */}
-          <p className="text-base sm:text-lg md:text-xl text-white/70 max-w-2xl mx-auto">
-            Notre IA va analyser et structurer{" "}
-            <span className="text-white font-bold">vos compétences</span> en quelques secondes
-          </p>
-        </motion.div>
-
-        {/* Main content area */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="mt-10 md:mt-16 flex justify-center"
-        >
-          {isUploading ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="w-full max-w-2xl glass rounded-[28px] p-6 md:p-10 border border-white/10 backdrop-blur-xl relative overflow-hidden"
-            >
-              {/* Top gradient accent */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
-
-              <BiometricLoader progress={progress} status={status} />
-
-              {/* Bottom shine */}
-              <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-purple-500 to-transparent" />
-            </motion.div>
-          ) : (
-            <CVDropzone
-              onFileSelect={handleFileSelect}
-              isUploading={isUploading}
-            />
-          )}
-        </motion.div>
-
-        {/* Premium Tips Section */}
-        {!isUploading && (
+      <main className="container-app py-6">
+        {/* Header */}
+        <div className="page-header text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mx-auto mt-12 md:mt-16 max-w-2xl"
           >
-            {/* Section header */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-              <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">
-                Conseils pour un meilleur résultat
-              </h3>
-              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-            </div>
+            <span className="badge badge-primary mb-4">
+              {hasCV && !showUploadNew ? "CV detecte" : "Etape 1"}
+            </span>
+            <h1 className="page-title text-2xl sm:text-3xl md:text-4xl">
+              {hasCV && !showUploadNew ? (
+                <>Votre <span className="gradient-text">CV</span> est pret</>
+              ) : (
+                <>Uploadez votre <span className="gradient-text">CV</span></>
+              )}
+            </h1>
+            <p className="page-subtitle mt-2 max-w-md mx-auto">
+              {hasCV && !showUploadNew
+                ? "Utilisez votre CV existant ou uploadez-en un nouveau"
+                : "Notre IA analyse et structure vos competences"
+              }
+            </p>
+          </motion.div>
+        </div>
 
-            {/* Tips cards */}
-            <div className="grid gap-4">
-              {tips.map((tip, index) => {
-                const gradients = [
-                  "from-cyan-500 to-indigo-500",
-                  "from-indigo-500 to-purple-500",
-                  "from-purple-500 to-violet-500",
-                ];
-                const gradient = gradients[index % gradients.length];
-
-                return (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 + index * 0.1, type: "spring" }}
-                    whileHover={{ x: 5 }}
-                    className="relative group"
-                  >
-                    {/* Hover glow */}
-                    <div className={`absolute -inset-1 bg-gradient-to-r ${gradient} rounded-2xl opacity-0 group-hover:opacity-20 blur-xl transition-all duration-300`} />
-
-                    {/* Card */}
-                    <div className="relative flex items-start gap-4 glass rounded-2xl p-4 md:p-5 border border-white/10 backdrop-blur-xl group-hover:border-white/20 transition-all">
-                      {/* Icon with gradient */}
-                      <div className="relative flex-shrink-0">
-                        <div className={`absolute -inset-1 bg-gradient-to-r ${gradient} rounded-xl blur opacity-30`} />
-                        <div className={`relative h-10 w-10 md:h-12 md:w-12 rounded-xl bg-gradient-to-r ${gradient} flex items-center justify-center shadow-lg`}>
-                          <tip.icon className="h-5 w-5 md:h-6 md:w-6 text-white" />
-                        </div>
-                      </div>
-
-                      {/* Text */}
-                      <div className="flex-1 pt-1">
-                        <p className="text-sm md:text-base text-white/70 leading-relaxed">
-                          {tip.text}
-                        </p>
-                      </div>
+        {/* Main Content */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="max-w-lg mx-auto mt-8"
+        >
+          <AnimatePresence mode="wait">
+            {/* Has existing CV - Show options */}
+            {hasCV && !showUploadNew && !isUploading && (
+              <motion.div
+                key="existing-cv"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-4"
+              >
+                {/* Existing CV Card */}
+                <div className="card-modern p-6">
+                  <div className="flex items-start gap-4 mb-6">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle className="w-7 h-7 text-white" />
                     </div>
-                  </motion.div>
-                );
-              })}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-white text-lg">CV enregistre</h3>
+                      {existingCVData?.personalInfo?.fullName && (
+                        <p className="text-white/70 mt-1">
+                          {existingCVData.personalInfo.fullName}
+                        </p>
+                      )}
+                      {existingCVData?.experiences?.[0]?.title && (
+                        <p className="text-sm text-white/50">
+                          {existingCVData.experiences[0].title}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Skills preview */}
+                  {existingCVData?.skills && (
+                    <div className="mb-6">
+                      <p className="text-xs text-white/40 mb-2">Competences detectees</p>
+                      {(() => {
+                        const allSkills = [
+                          ...(existingCVData.skills.languages || []),
+                          ...(existingCVData.skills.frameworks || []),
+                          ...(existingCVData.skills.aiAndData || []),
+                          ...(existingCVData.skills.toolsAndCloud || []),
+                          ...(existingCVData.skills.softSkills || []),
+                        ];
+                        return (
+                          <div className="flex flex-wrap gap-1.5">
+                            {allSkills.slice(0, 8).map((skill, i) => (
+                              <span key={i} className="px-2 py-1 rounded-md bg-white/[0.06] text-xs text-white/70">
+                                {skill}
+                              </span>
+                            ))}
+                            {allSkills.length > 8 && (
+                              <span className="px-2 py-1 rounded-md bg-white/[0.03] text-xs text-white/40">
+                                +{allSkills.length - 8}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleUseExistingCV}
+                    className="btn-primary w-full py-3"
+                  >
+                    <Sparkles className="w-5 h-5" />
+                    Continuer avec ce CV
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Upload new option */}
+                <button
+                  onClick={() => setShowUploadNew(true)}
+                  className="w-full p-4 rounded-xl border border-dashed border-white/20 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all flex items-center justify-center gap-3 text-white/60 hover:text-white/80"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                  <span>Uploader un nouveau CV</span>
+                </button>
+              </motion.div>
+            )}
+
+            {/* Uploading State */}
+            {isUploading && (
+              <motion.div
+                key="uploading"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="card-modern p-6 sm:p-8"
+              >
+                <div className="flex flex-col items-center">
+                  {/* Progress Circle */}
+                  <div className="relative w-24 h-24 mb-6">
+                    <svg className="w-full h-full -rotate-90">
+                      <circle
+                        cx="48" cy="48" r="42"
+                        strokeWidth="6" fill="none"
+                        className="stroke-white/10"
+                      />
+                      <circle
+                        cx="48" cy="48" r="42"
+                        strokeWidth="6" fill="none"
+                        className="stroke-indigo-500"
+                        strokeLinecap="round"
+                        strokeDasharray={264}
+                        strokeDashoffset={264 - (264 * progress) / 100}
+                        style={{ transition: "stroke-dashoffset 0.5s ease" }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xl font-bold text-white">
+                        {Math.round(progress)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-white font-medium mb-1">{status}</p>
+                  <p className="text-sm text-white/50">Veuillez patienter...</p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* File Selected State */}
+            {selectedFile && !isUploading && (
+              <motion.div
+                key="file-selected"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="card-modern p-6"
+              >
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-6 h-6 text-indigo-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-white truncate">
+                      {selectedFile.name}
+                    </p>
+                    <p className="text-sm text-white/50">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedFile(null)}
+                    className="btn-icon w-8 h-8 hover:bg-red-500/20 hover:text-red-400"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <button onClick={handleUpload} className="btn-primary w-full py-3">
+                  <Upload className="w-4 h-4" />
+                  {hasCV ? "Remplacer mon CV" : "Analyser mon CV"}
+                </button>
+
+                {hasCV && (
+                  <button
+                    onClick={() => {
+                      setSelectedFile(null);
+                      setShowUploadNew(false);
+                    }}
+                    className="w-full mt-3 text-sm text-white/50 hover:text-white/70 transition-colors"
+                  >
+                    Annuler et garder mon CV actuel
+                  </button>
+                )}
+              </motion.div>
+            )}
+
+            {/* Dropzone - Show if no existing CV or user wants to upload new */}
+            {(!hasCV || showUploadNew) && !selectedFile && !isUploading && (
+              <motion.div
+                key="dropzone"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <div
+                  {...getRootProps()}
+                  className={`
+                    card-modern p-8 cursor-pointer text-center
+                    border-2 border-dashed transition-all
+                    ${isDragActive
+                      ? "border-indigo-500 bg-indigo-500/10"
+                      : "border-white/10 hover:border-indigo-500/50"
+                    }
+                  `}
+                >
+                  <input {...getInputProps()} />
+
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-500/20 flex items-center justify-center mx-auto mb-4">
+                    <Upload className="w-8 h-8 text-indigo-400" />
+                  </div>
+
+                  <p className="text-white font-medium mb-1">
+                    {isDragActive ? "Deposez ici..." : "Glissez votre CV ici"}
+                  </p>
+                  <p className="text-sm text-white/50 mb-4">ou cliquez pour parcourir</p>
+
+                  <span className="badge badge-neutral">PDF uniquement</span>
+                </div>
+
+                {hasCV && showUploadNew && (
+                  <button
+                    onClick={() => setShowUploadNew(false)}
+                    className="w-full mt-4 text-sm text-white/50 hover:text-white/70 transition-colors"
+                  >
+                    Annuler et utiliser mon CV existant
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Tips - Only show when no CV exists */}
+        {!hasCV && !isUploading && !selectedFile && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="max-w-lg mx-auto mt-8"
+          >
+            <p className="text-xs text-white/40 uppercase tracking-wider text-center mb-4">
+              Conseils
+            </p>
+            <div className="space-y-3">
+              {tips.map((tip, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + i * 0.1 }}
+                  className="flex items-center gap-3 text-sm text-white/60"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
+                    <tip.icon className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  {tip.text}
+                </motion.div>
+              ))}
             </div>
           </motion.div>
         )}
-      </div>
-    </PageTransition>
+      </main>
+    </div>
   );
 }
