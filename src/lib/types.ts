@@ -353,6 +353,19 @@ export type ApplicationStatus =
   | "completed"           // All documents ready
   | "error";              // Something went wrong
 
+// ==================== LEARNED GAPS (Progressive Intelligence) ====================
+
+export interface LearnedGap {
+  strategy: Strategy;
+  evidence: string[];        // Evidence that supports this strategy
+  confidence: number;        // 0-1 confidence score
+  lastUsed: Date;            // Last time this gap was used
+  usageCount: number;        // Number of times this strategy was applied
+}
+
+// Storage format in MasterProfile.learnedGaps
+export type LearnedGapsRecord = Record<string, LearnedGap>;
+
 // ==================== UTILITY TYPES ====================
 
 export interface APIResponse<T> {

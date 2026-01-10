@@ -5,7 +5,7 @@ import { getSession } from "./auth-actions";
 import { extractTextFromPDF } from "@/lib/pdf-parser";
 import { generateJSON } from "@/lib/gemini";
 import { getCVExtractionPrompt } from "@/lib/prompts";
-import type { CVData } from "@/lib/types";
+import type { CVData, Strategy, LearnedGap, LearnedGapsRecord } from "@/lib/types";
 
 // ==================== TYPES ====================
 
@@ -297,6 +297,298 @@ export async function updateCVData(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Erreur lors de la mise a jour",
+    };
+  }
+}
+
+// ==================== LEARNED GAPS (Progressive Intelligence) ====================
+
+/**
+ * Save a learned gap from a resolved conversation.
+ * If the skill already exists, it merges with existing data and increments usage count.
+ */
+export async function saveLearnedGap(
+  skill: string,
+  strategy: Strategy,
+  evidence: string[],
+  confidence: number
+): Promise<{
+  success: boolean;
+  data?: LearnedGap;
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Non authentifie" };
+    }
+
+    const profile = await prisma.masterProfile.findFirst({
+      where: {
+        userId: session.id,
+        isDefault: true,
+      },
+    });
+
+    if (!profile) {
+      return { success: false, error: "Profil non trouve" };
+    }
+
+    // Get current learned gaps
+    const currentLearnedGaps = (profile.learnedGaps as unknown as LearnedGapsRecord) || {};
+
+    // Check if skill already exists
+    const existingGap = currentLearnedGaps[skill];
+    const now = new Date();
+
+    const newLearnedGap: LearnedGap = {
+      strategy,
+      evidence: existingGap
+        ? [...new Set([...existingGap.evidence, ...evidence])] // Merge and dedupe evidence
+        : evidence,
+      confidence: existingGap
+        ? Math.max(existingGap.confidence, confidence) // Keep higher confidence
+        : confidence,
+      lastUsed: now,
+      usageCount: existingGap ? existingGap.usageCount + 1 : 1,
+    };
+
+    // Update learned gaps record
+    const updatedLearnedGaps: LearnedGapsRecord = {
+      ...currentLearnedGaps,
+      [skill]: newLearnedGap,
+    };
+
+    await prisma.masterProfile.update({
+      where: { id: profile.id },
+      data: {
+        learnedGaps: updatedLearnedGaps as object,
+        updatedAt: now,
+      },
+    });
+
+    return { success: true, data: newLearnedGap };
+  } catch (error) {
+    console.error("Save learned gap error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erreur lors de la sauvegarde",
+    };
+  }
+}
+
+/**
+ * Get all learned gaps for the user's default profile.
+ */
+export async function getLearnedGaps(): Promise<{
+  success: boolean;
+  data?: LearnedGapsRecord;
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Non authentifie" };
+    }
+
+    const profile = await prisma.masterProfile.findFirst({
+      where: {
+        userId: session.id,
+        isDefault: true,
+      },
+    });
+
+    if (!profile) {
+      return { success: true, data: {} };
+    }
+
+    const learnedGaps = (profile.learnedGaps as unknown as LearnedGapsRecord) || {};
+
+    return { success: true, data: learnedGaps };
+  } catch (error) {
+    console.error("Get learned gaps error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erreur lors du chargement",
+    };
+  }
+}
+
+/**
+ * Find matching learned gaps for a list of required skills.
+ * Used during job analysis to auto-resolve gaps.
+ */
+export async function findMatchingLearnedGaps(
+  requiredSkills: string[]
+): Promise<{
+  success: boolean;
+  data?: Record<string, LearnedGap>;
+  error?: string;
+}> {
+  try {
+    const result = await getLearnedGaps();
+    if (!result.success || !result.data) {
+      return result;
+    }
+
+    const learnedGaps = result.data;
+    const matches: Record<string, LearnedGap> = {};
+
+    // Normalize skill names for matching (lowercase, trim)
+    const normalizedLearned = Object.entries(learnedGaps).reduce(
+      (acc, [skill, gap]) => {
+        acc[skill.toLowerCase().trim()] = { originalKey: skill, gap };
+        return acc;
+      },
+      {} as Record<string, { originalKey: string; gap: LearnedGap }>
+    );
+
+    for (const skill of requiredSkills) {
+      const normalizedSkill = skill.toLowerCase().trim();
+
+      // Exact match
+      if (normalizedLearned[normalizedSkill]) {
+        matches[skill] = normalizedLearned[normalizedSkill].gap;
+        continue;
+      }
+
+      // Partial match (skill contains or is contained in learned skill)
+      for (const [learnedKey, { gap }] of Object.entries(normalizedLearned)) {
+        if (
+          learnedKey.includes(normalizedSkill) ||
+          normalizedSkill.includes(learnedKey)
+        ) {
+          // Only use if confidence is high enough
+          if (gap.confidence >= 0.7) {
+            matches[skill] = gap;
+            break;
+          }
+        }
+      }
+    }
+
+    return { success: true, data: matches };
+  } catch (error) {
+    console.error("Find matching learned gaps error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erreur lors de la recherche",
+    };
+  }
+}
+
+// ==================== COVERAGE METRICS ====================
+
+export interface SkillCoverage {
+  skill: string;
+  requestCount: number;
+  isCovered: boolean;
+}
+
+export interface CoverageMetrics {
+  percentage: number;             // 0-100
+  learnedGapsCount: number;       // Total skills learned
+  totalJobsAnalyzed: number;      // Total jobs the user analyzed
+  topRequestedSkills: SkillCoverage[];
+}
+
+/**
+ * Calculate profile coverage metrics based on learned gaps and job analyses.
+ * Coverage = how many commonly requested skills the user has strategies for.
+ */
+export async function getCoverageMetrics(): Promise<{
+  success: boolean;
+  data?: CoverageMetrics;
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Non authentifie" };
+    }
+
+    // Get profile with learned gaps
+    const profile = await prisma.masterProfile.findFirst({
+      where: {
+        userId: session.id,
+        isDefault: true,
+      },
+      include: {
+        jobOffers: true,
+      },
+    });
+
+    if (!profile) {
+      return {
+        success: true,
+        data: {
+          percentage: 0,
+          learnedGapsCount: 0,
+          totalJobsAnalyzed: 0,
+          topRequestedSkills: [],
+        },
+      };
+    }
+
+    const learnedGaps = (profile.learnedGaps as unknown as LearnedGapsRecord) || {};
+    const learnedSkills = new Set(Object.keys(learnedGaps).map(s => s.toLowerCase()));
+    const learnedGapsCount = learnedSkills.size;
+
+    // Aggregate skill requests from all job analyses
+    const skillRequestCounts: Record<string, number> = {};
+
+    for (const jobOffer of profile.jobOffers) {
+      const requiredSkills = jobOffer.requiredSkills || [];
+      for (const skill of requiredSkills) {
+        const normalizedSkill = skill.toLowerCase().trim();
+        skillRequestCounts[normalizedSkill] = (skillRequestCounts[normalizedSkill] || 0) + 1;
+      }
+    }
+
+    // Sort by request count and get top 10
+    const sortedSkills = Object.entries(skillRequestCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+
+    const topRequestedSkills: SkillCoverage[] = sortedSkills.map(([skill, count]) => ({
+      skill: skill.charAt(0).toUpperCase() + skill.slice(1), // Capitalize
+      requestCount: count,
+      isCovered: learnedSkills.has(skill) ||
+        // Partial match: check if learned skill contains or is contained in requested
+        Array.from(learnedSkills).some(
+          learned => learned.includes(skill) || skill.includes(learned)
+        ),
+    }));
+
+    // Calculate coverage percentage
+    // Base: how many of the top requested skills are covered
+    const coveredCount = topRequestedSkills.filter(s => s.isCovered).length;
+    const totalRequested = topRequestedSkills.length;
+
+    // Coverage formula: combination of learned gaps and coverage of top skills
+    // - Base score from learned gaps (0-50 points based on count)
+    // - Skill coverage score (0-50 points based on coverage of top skills)
+    const learnedScore = Math.min(learnedGapsCount * 10, 50);
+    const coverageScore = totalRequested > 0
+      ? Math.round((coveredCount / totalRequested) * 50)
+      : 0;
+
+    const percentage = Math.min(learnedScore + coverageScore, 100);
+
+    return {
+      success: true,
+      data: {
+        percentage,
+        learnedGapsCount,
+        totalJobsAnalyzed: profile.jobOffers.length,
+        topRequestedSkills,
+      },
+    };
+  } catch (error) {
+    console.error("Get coverage metrics error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erreur lors du calcul",
     };
   }
 }

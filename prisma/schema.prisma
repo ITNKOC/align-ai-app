@@ -37,6 +37,10 @@ model MasterProfile {
   fileName       String?    // Original file name
   fileSize       Int?       // File size in bytes
 
+  // Intelligence Progressive - Learned gaps from previous applications
+  // Structure: { [skill]: { strategy, evidence, confidence, lastUsed, usageCount } }
+  learnedGaps    Json       @default("{}")
+
   // Default profile
   isDefault      Boolean    @default(true)
 

@@ -31,7 +31,16 @@ import {
   X,
 } from "lucide-react";
 import { AppNavbar } from "@/components/shared/app-navbar";
-import { getUserProfile, uploadCV, deleteCV, type ProfileData, type ProfileStats } from "@/actions/profile-actions";
+import { CoverageGauge, TopSkillsList } from "@/components/profile";
+import {
+  getUserProfile,
+  uploadCV,
+  deleteCV,
+  getCoverageMetrics,
+  type ProfileData,
+  type ProfileStats,
+  type CoverageMetrics,
+} from "@/actions/profile-actions";
 import { getSession } from "@/actions/auth-actions";
 import type { CVData } from "@/lib/types";
 
@@ -40,6 +49,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<{ fullName: string; email: string } | null>(null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
+  const [coverage, setCoverage] = useState<CoverageMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -63,6 +73,12 @@ export default function ProfilePage() {
       if (result.success) {
         setProfile(result.profile || null);
         setStats(result.stats || null);
+      }
+
+      // Load coverage metrics
+      const coverageResult = await getCoverageMetrics();
+      if (coverageResult.success && coverageResult.data) {
+        setCoverage(coverageResult.data);
       }
     } catch {
       toast.error("Erreur lors du chargement");
@@ -459,6 +475,20 @@ export default function ProfilePage() {
                 color="amber"
               />
             </motion.div>
+
+            {/* Coverage Gauge - Progressive Intelligence */}
+            {profile && coverage && (
+              <CoverageGauge
+                percentage={coverage.percentage}
+                learnedGapsCount={coverage.learnedGapsCount}
+                totalJobsAnalyzed={coverage.totalJobsAnalyzed}
+              />
+            )}
+
+            {/* Top Skills List */}
+            {profile && coverage && coverage.topRequestedSkills.length > 0 && (
+              <TopSkillsList skills={coverage.topRequestedSkills} />
+            )}
 
             {/* Quick Tips */}
             {!profile && (

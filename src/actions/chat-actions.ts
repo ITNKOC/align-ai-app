@@ -25,7 +25,9 @@ import type {
   CollectedProject,
   SuggestedReply,
   PreAnalysis,
+  LearnedGap,
 } from "@/lib/types";
+import { saveLearnedGap, findMatchingLearnedGaps } from "./profile-actions";
 
 // ==================== TYPES ====================
 
@@ -593,6 +595,25 @@ export async function sendChatMessage(
         currentSlot.strategy.validated = true;
       }
 
+      // Progressive Intelligence: Save learned gap to MasterProfile
+      // This allows auto-resolution of the same gap in future applications
+      if (currentSlot.strategy) {
+        const evidence: string[] = [
+          ...currentSlot.transferableSkills.map(s => s.skill),
+          ...currentSlot.relatedProjects.map(p => p.name),
+          ...currentSlot.learningEvidence.map(e => e.description),
+        ];
+        const confidence = aiResponse.confidenceToClose / 100;
+
+        // Fire-and-forget: don't await to avoid blocking the response
+        saveLearnedGap(
+          currentGap.skill,
+          currentSlot.strategy,
+          evidence,
+          confidence
+        ).catch(err => console.error("[LearnedGaps] Save error:", err));
+      }
+
       // Move to next gap
       newGapIndex = currentGapIndex + 1;
       isComplete = newGapIndex >= analysisResult.gaps.length;
@@ -678,11 +699,65 @@ export async function initializeChat(
     const cvData = application.jobOffer.masterProfile.structuredData as unknown as CVData;
     const analysisResult = application.jobOffer.analysisResult as unknown as AnalysisResult;
 
+    // Progressive Intelligence: Check for learned gaps from previous applications
+    const learnedGapsResult = await findMatchingLearnedGaps(
+      analysisResult.gaps.map(g => g.skill)
+    );
+    const learnedGaps = learnedGapsResult.success ? learnedGapsResult.data || {} : {};
+    const learnedGapsCount = Object.keys(learnedGaps).length;
+
+    if (learnedGapsCount > 0) {
+      console.log(`[LearnedGaps] Found ${learnedGapsCount} matching learned gaps`);
+    }
+
     // v3.0: Run pre-analysis on all gaps
     const gapSlots: GapSlot[] = [];
     const strategies: Record<string, Strategy> = {};
 
     for (const gap of analysisResult.gaps) {
+      // Check if this gap was learned from a previous application
+      const learnedGap = learnedGaps[gap.skill];
+
+      // If learned gap exists with high confidence, auto-fill immediately
+      if (learnedGap && learnedGap.confidence >= 0.7) {
+        console.log(`[LearnedGaps] Auto-resolving "${gap.skill}" from previous application`);
+
+        const slot: GapSlot = {
+          skill: gap.skill,
+          severity: gap.severity,
+          category: gap.category,
+          preAnalysis: {
+            potentialMatches: learnedGap.evidence,
+            relatedProjects: [],
+            relatedExperiences: [],
+            suggestedStrategy: learnedGap.strategy.approach,
+            confidence: learnedGap.confidence * 100,
+            reasoning: `Stratégie apprise d'une candidature précédente (utilisée ${learnedGap.usageCount} fois)`,
+          },
+          status: "filled",
+          hasDirectExperience: true,
+          experienceLevel: "intermediate",
+          relatedProjects: [],
+          transferableSkills: learnedGap.evidence.map(e => ({
+            skill: e,
+            fromExperience: "Previous application",
+            relevanceScore: 8,
+          })),
+          learningEvidence: [],
+          quantifiedAchievements: [],
+          strategy: {
+            ...learnedGap.strategy,
+            validated: true,
+          },
+          questionsAsked: 0,
+          filledAt: Date.now(),
+        };
+
+        gapSlots.push(slot);
+        strategies[gap.skill] = slot.strategy!;
+        continue;
+      }
+
       const preAnalysis = await preAnalyzeGap(cvData, gap);
 
       const slot: GapSlot = {

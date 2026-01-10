@@ -408,3 +408,42 @@ export const phaseConnectorDot = (index: number): Variants => ({
     transition: { delay: index * 0.1 + 0.4, duration: 0.6, ease: "easeOut" as const },
   },
 });
+
+// ============================================================================
+// GAUGE ANIMATIONS (Coverage, Progress)
+// ============================================================================
+
+export const gaugeContainer: Variants = {
+  initial: { scale: 0.9, opacity: 0 },
+  animate: {
+    scale: 1,
+    opacity: 1,
+    transition: { duration: DURATION.normal, ease: EASE.default },
+  },
+};
+
+export const gaugeProgress = (percentage: number): Variants => ({
+  initial: { pathLength: 0 },
+  animate: {
+    pathLength: percentage / 100,
+    transition: { duration: 1.2, ease: EASE.smooth, delay: 0.3 },
+  },
+});
+
+export const gaugeNumber: Variants = {
+  initial: { opacity: 0, scale: 0.5 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    transition: { delay: 0.5, type: "spring", stiffness: 200 },
+  },
+};
+
+export const gaugeLabel: Variants = {
+  initial: { opacity: 0, y: 10 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { delay: 0.7, duration: DURATION.normal },
+  },
+};
