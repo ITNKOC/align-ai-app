@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { AppNavbar } from "@/components/shared/app-navbar";
+import { PhaseIndicator } from "@/components/shared/phase-indicator";
 import { uploadAndParseCV } from "@/actions/cv-actions";
 import { hasExistingCV, uploadCV } from "@/actions/profile-actions";
 import { getSession } from "@/actions/auth-actions";
@@ -151,6 +152,7 @@ export default function UploadPage() {
       <AppNavbar />
 
       <main className="container-app py-6">
+        <PhaseIndicator currentPhase={1} />
         {/* Header */}
         <div className="page-header text-center">
           <motion.div

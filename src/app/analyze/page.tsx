@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { ArrowRight, Search, Sparkles, Target, Loader2, Link2 } from "lucide-react";
 import { AppNavbar } from "@/components/shared/app-navbar";
+import { PhaseIndicator } from "@/components/shared/phase-indicator";
 import { AnimatedCard } from "@/components/shared/animated-card";
 import { ScoreGauge } from "@/components/analysis/score-gauge";
 import { GapList, KeywordCloud } from "@/components/analysis/gap-list";
@@ -73,6 +74,7 @@ export default function AnalyzePage() {
     <div className="min-h-screen pb-20 md:pb-8">
       <AppNavbar />
       <main className="container-app py-6">
+        <PhaseIndicator currentPhase={2} />
         {/* Header */}
         <div className="page-header text-center">
           <motion.div

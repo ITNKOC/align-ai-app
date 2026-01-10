@@ -16,6 +16,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { getSession, logout } from "@/actions/auth-actions";
+import { dropdownMenu } from "@/lib/animations";
 
 interface AppNavbarProps {
   showAuth?: boolean;
@@ -111,10 +112,10 @@ export function AppNavbar({ showAuth = true }: AppNavbarProps) {
                               onClick={() => setShowMenu(false)}
                             />
                             <motion.div
-                              initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                              transition={{ duration: 0.15 }}
+                              variants={dropdownMenu}
+                              initial="initial"
+                              animate="animate"
+                              exit="exit"
                               className="dropdown-menu z-50"
                             >
                               <div className="px-3 py-2.5 border-b border-white/10">

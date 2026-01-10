@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { cardEnter, cardHover, staggerContainer, staggerItem, DURATION, EASE } from "@/lib/animations";
 
 interface AnimatedCardProps {
   children: React.ReactNode;
@@ -20,15 +21,16 @@ export function AnimatedCard({
 }: AnimatedCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      variants={cardEnter}
+      initial="initial"
+      animate="animate"
+      exit="exit"
       transition={{
-        duration: 0.4,
+        duration: DURATION.pageTransition,
         delay,
-        ease: [0.25, 0.46, 0.45, 0.94],
+        ease: EASE.default,
       }}
-      whileHover={{ y: -2, transition: { duration: 0.2 } }}
+      {...cardHover}
       className={cn(
         "relative rounded-2xl p-5 md:p-6 transition-all duration-300",
         glass
@@ -58,27 +60,15 @@ export function AnimatedList({
 }: AnimatedListProps) {
   return (
     <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: { opacity: 0 },
-        visible: {
-          opacity: 1,
-          transition: {
-            staggerChildren: staggerDelay,
-          },
-        },
-      }}
+      initial="initial"
+      animate="animate"
+      variants={staggerContainer(staggerDelay)}
       className={className}
     >
       {children.map((child, index) => (
         <motion.div
           key={index}
-          variants={{
-            hidden: { opacity: 0, y: 20 },
-            visible: { opacity: 1, y: 0 },
-          }}
-          transition={{ duration: 0.3 }}
+          variants={staggerItem}
         >
           {child}
         </motion.div>

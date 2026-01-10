@@ -18,6 +18,7 @@ import {
   Rocket,
 } from "lucide-react";
 import { AppNavbar } from "@/components/shared/app-navbar";
+import { PhaseIndicator } from "@/components/shared/phase-indicator";
 import { DocumentPreview } from "@/components/generation/document-preview";
 import {
   generateDocuments,
@@ -297,6 +298,7 @@ export default function GeneratePage() {
     <div className="min-h-screen pb-20 md:pb-8">
       <AppNavbar />
       <main className="container-app py-6">
+        <PhaseIndicator currentPhase={4} />
         {/* Header */}
         <div className="page-header text-center">
           <motion.div

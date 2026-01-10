@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { MessageSquare, Shield, Loader2 } from "lucide-react";
 import { AppNavbar } from "@/components/shared/app-navbar";
+import { PhaseIndicator } from "@/components/shared/phase-indicator";
 import { ChatInterface } from "@/components/chat/chat-interface";
 import {
   initializeChat,
@@ -190,6 +191,7 @@ export default function ChatPage() {
     <div className="min-h-screen pb-20 md:pb-8 flex flex-col">
       <AppNavbar />
       <main className="container-app py-4 flex flex-col flex-1 min-h-0">
+        <PhaseIndicator currentPhase={3} />
         {/* Header */}
         <div className="text-center mb-4">
           <motion.div

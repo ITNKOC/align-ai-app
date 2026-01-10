@@ -1,6 +1,13 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  pageTransition,
+  fadeIn as fadeInVariant,
+  slideUp as slideUpVariant,
+  DURATION,
+  EASE,
+} from "@/lib/animations";
 
 interface PageTransitionProps {
   children: React.ReactNode;
@@ -11,13 +18,10 @@ export function PageTransition({ children, className }: PageTransitionProps) {
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{
-          duration: 0.3,
-          ease: [0.25, 0.46, 0.45, 0.94],
-        }}
+        variants={pageTransition}
+        initial="initial"
+        animate="animate"
+        exit="exit"
         className={className}
       >
         {children}
@@ -37,9 +41,10 @@ export function FadeIn({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.4, delay }}
+      variants={fadeInVariant}
+      initial="initial"
+      animate="animate"
+      transition={{ duration: DURATION.normal, delay }}
       className={className}
     >
       {children}
@@ -58,12 +63,13 @@ export function SlideUp({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
+      variants={slideUpVariant}
+      initial="initial"
+      animate="animate"
       transition={{
-        duration: 0.5,
+        duration: DURATION.slow,
         delay,
-        ease: [0.25, 0.46, 0.45, 0.94],
+        ease: EASE.default,
       }}
       className={className}
     >

@@ -3,6 +3,17 @@
 import { motion } from "framer-motion";
 import { Upload, Search, MessageSquare, FileText, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  phaseItem,
+  phaseItemDesktop,
+  phaseCardHover,
+  phaseConnector,
+  phaseLabel,
+  phaseBadge,
+  phaseCheck,
+  phaseMobileInfo,
+  phaseConnectorDot,
+} from "@/lib/animations";
 
 interface Phase {
   id: number;
@@ -37,9 +48,9 @@ export function PhaseIndicator({ currentPhase }: PhaseIndicatorProps) {
           return (
             <motion.div
               key={phase.id}
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: index * 0.08, type: "spring" }}
+              variants={phaseItem(index)}
+              initial="initial"
+              animate="animate"
               className="flex items-center"
             >
               <div className="relative group">
@@ -78,9 +89,9 @@ export function PhaseIndicator({ currentPhase }: PhaseIndicatorProps) {
                   {isComplete && (
                     <motion.div
                       className={`absolute inset-0 h-0.5 top-1/2 -translate-y-1/2 bg-gradient-to-r ${phase.gradient} rounded-full`}
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: 1 }}
-                      transition={{ delay: index * 0.08 + 0.3, duration: 0.4 }}
+                      variants={phaseConnector(index)}
+                      initial="initial"
+                      animate="animate"
                       style={{ originX: 0 }}
                     />
                   )}
@@ -101,9 +112,9 @@ export function PhaseIndicator({ currentPhase }: PhaseIndicatorProps) {
           return (
             <div key={phase.id} className="flex items-center">
               <motion.div
-                initial={{ scale: 0.8, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1, type: "spring", stiffness: 200 }}
+                variants={phaseItemDesktop(index)}
+                initial="initial"
+                animate="animate"
                 className="flex flex-col items-center relative group"
               >
                 {/* Static glow for current/completed */}
@@ -121,8 +132,7 @@ export function PhaseIndicator({ currentPhase }: PhaseIndicatorProps) {
                         ? "glass ring-2 ring-indigo-500/50 shadow-2xl shadow-indigo-500/30"
                         : "glass ring-1 ring-white/10"
                   )}
-                  whileHover={{ scale: 1.08, y: -4 }}
-                  whileTap={{ scale: 0.98 }}
+                  {...phaseCardHover}
                 >
                   {/* Top accent */}
                   {(isCurrent || isComplete) && (
@@ -132,9 +142,9 @@ export function PhaseIndicator({ currentPhase }: PhaseIndicatorProps) {
                   {/* Icon or check */}
                   {isComplete ? (
                     <motion.div
-                      initial={{ scale: 0, rotate: -180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: "spring", stiffness: 300, delay: 0.2 }}
+                      variants={phaseCheck}
+                      initial="initial"
+                      animate="animate"
                     >
                       <Check className="h-7 w-7 lg:h-8 lg:w-8 text-white" />
                     </motion.div>
@@ -161,18 +171,18 @@ export function PhaseIndicator({ currentPhase }: PhaseIndicatorProps) {
                         ? "text-white"
                         : "text-white/40"
                   )}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 + 0.2 }}
+                  variants={phaseLabel(index)}
+                  initial="initial"
+                  animate="animate"
                 >
                   {phase.name}
                 </motion.span>
 
                 {/* Phase number badge */}
                 <motion.div
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1 + 0.3, type: "spring" }}
+                  variants={phaseBadge(index)}
+                  initial="initial"
+                  animate="animate"
                   className={cn(
                     "mt-2 px-2 py-0.5 rounded-full text-xs font-semibold",
                     isComplete
@@ -196,9 +206,9 @@ export function PhaseIndicator({ currentPhase }: PhaseIndicatorProps) {
                   {isComplete && (
                     <motion.div
                       className={`absolute inset-0 h-1 top-1/2 -translate-y-1/2 bg-gradient-to-r ${phase.gradient} rounded-full shadow-lg`}
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: 1 }}
-                      transition={{ delay: index * 0.1 + 0.4, duration: 0.6, ease: "easeOut" }}
+                      variants={phaseConnector(index)}
+                      initial="initial"
+                      animate="animate"
                       style={{ originX: 0 }}
                     />
                   )}
@@ -207,9 +217,9 @@ export function PhaseIndicator({ currentPhase }: PhaseIndicatorProps) {
                   {isComplete && (
                     <motion.div
                       className="absolute h-2 w-2 top-1/2 -translate-y-1/2 rounded-full bg-white shadow-lg"
-                      initial={{ left: 0 }}
-                      animate={{ left: "100%" }}
-                      transition={{ delay: index * 0.1 + 0.4, duration: 0.6, ease: "easeOut" }}
+                      variants={phaseConnectorDot(index)}
+                      initial="initial"
+                      animate="animate"
                     />
                   )}
                 </div>
@@ -221,9 +231,9 @@ export function PhaseIndicator({ currentPhase }: PhaseIndicatorProps) {
 
       {/* Mobile progress info - Premium */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+        variants={phaseMobileInfo}
+        initial="initial"
+        animate="animate"
         className="mt-4 text-center md:hidden"
       >
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-white/10 backdrop-blur-xl">
