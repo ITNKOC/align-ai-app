@@ -19,6 +19,7 @@ import {
   Circle,
 } from "lucide-react";
 import { MessageBubble, TypingIndicator } from "./message-bubble";
+import { MiniCelebration, useCelebration } from "@/components/shared/celebration";
 import type { ChatMessage, GapAnalysis, Strategy, GapSlot, SuggestedReply } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -55,10 +56,31 @@ export function ChatInterface({
   const [showSkipAllConfirm, setShowSkipAllConfirm] = useState(false);
   const [isSkippingAll, setIsSkippingAll] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
+  const [showMiniCelebration, setShowMiniCelebration] = useState(false);
+  const [prevGapIndex, setPrevGapIndex] = useState(currentGapIndex);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Celebration hook for big milestones
+  const { celebrate } = useCelebration();
+
   const currentGap = gaps[currentGapIndex];
+
+  // Trigger celebration when moving to next gap
+  useEffect(() => {
+    if (currentGapIndex > prevGapIndex && prevGapIndex < gaps.length) {
+      // Gap completed - trigger celebration!
+      celebrate("gap_completed", `${gaps[prevGapIndex]?.skill || "Competence"} valide !`);
+    }
+    setPrevGapIndex(currentGapIndex);
+  }, [currentGapIndex, prevGapIndex, gaps, celebrate]);
+
+  // Trigger celebration when all gaps are done
+  useEffect(() => {
+    if (isComplete && strategies.length > 0) {
+      celebrate("all_gaps_done", `${strategies.length} strategies pretes !`);
+    }
+  }, [isComplete, strategies.length, celebrate]);
   const lastAssistantMessage = [...messages].reverse().find((m) => m.role === "assistant");
   const suggestedReplies = lastAssistantMessage?.suggestedReplies || [];
 
@@ -88,6 +110,13 @@ export function ChatInterface({
     if (isSending) return;
     setIsSending(true);
     setShowCustomInput(false);
+
+    // Show mini celebration for positive validation
+    if (suggestion.type === "positive") {
+      setShowMiniCelebration(true);
+      setTimeout(() => setShowMiniCelebration(false), 1500);
+    }
+
     try {
       await onSendMessage(suggestion.value);
     } finally {
@@ -306,47 +335,96 @@ export function ChatInterface({
         ) : (
           /* Active Chat Input */
           <div className="space-y-3">
-            {/* Suggested Replies */}
+            {/* VALIDATOR MODE: Action Buttons */}
             <AnimatePresence mode="wait">
               {suggestedReplies.length > 0 && !showCustomInput && !isTyping && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="space-y-2"
+                  className="space-y-3"
                 >
-                  <p className="text-xs text-white/40">Reponses suggerees</p>
-                  <div className="flex flex-wrap gap-2">
-                    {suggestedReplies.map((suggestion, index) => (
+                  {/* Mini Celebration */}
+                  <div className="flex justify-center">
+                    <MiniCelebration isVisible={showMiniCelebration} message="Valide !" />
+                  </div>
+
+                  {/* Validator Mode Header */}
+                  {!showMiniCelebration && (
+                    <div className="flex items-center gap-2">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+                      <span className="text-xs text-indigo-400 font-medium px-2">Validez en 1 clic</span>
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+                    </div>
+                  )}
+
+                  {/* Primary Action: Parfait button (larger, prominent) */}
+                  <div className="flex flex-col gap-2">
+                    {suggestedReplies[0] && (
                       <motion.button
-                        key={suggestion.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
+                        initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: index * 0.05 }}
-                        onClick={() => handleSuggestionClick(suggestion)}
+                        onClick={() => handleSuggestionClick(suggestedReplies[0])}
                         disabled={isSending}
-                        className={cn(
-                          "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all disabled:opacity-50",
-                          getSuggestionStyle(suggestion.type)
-                        )}
+                        className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl text-base font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all disabled:opacity-50"
                       >
-                        {getSuggestionIcon(suggestion.type)}
-                        {suggestion.label}
+                        <Check className="w-5 h-5" />
+                        {suggestedReplies[0].label}
                       </motion.button>
-                    ))}
-                    <motion.button
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: suggestedReplies.length * 0.05 }}
+                    )}
+
+                    {/* Secondary Actions */}
+                    <div className="flex gap-2">
+                      {suggestedReplies.slice(1).map((suggestion, index) => (
+                        <motion.button
+                          key={suggestion.id}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: (index + 1) * 0.05 }}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          disabled={isSending}
+                          className={cn(
+                            "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all disabled:opacity-50",
+                            getSuggestionStyle(suggestion.type)
+                          )}
+                        >
+                          {getSuggestionIcon(suggestion.type)}
+                          {suggestion.label}
+                        </motion.button>
+                      ))}
+                      {onSkipGap && (
+                        <motion.button
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.15 }}
+                          onClick={async () => {
+                            setIsSending(true);
+                            try {
+                              await onSkipGap();
+                            } finally {
+                              setIsSending(false);
+                            }
+                          }}
+                          disabled={isSending}
+                          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border bg-white/5 border-white/20 text-white/50 hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-300 transition-all disabled:opacity-50"
+                        >
+                          <SkipForward className="w-3.5 h-3.5" />
+                          Passer
+                        </motion.button>
+                      )}
+                    </div>
+
+                    {/* Custom input toggle */}
+                    <button
                       onClick={() => {
                         setShowCustomInput(true);
                         setTimeout(() => textareaRef.current?.focus(), 100);
                       }}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border bg-white/5 border-white/20 text-white/70 hover:bg-white/10 hover:text-white transition-all"
+                      className="text-xs text-white/40 hover:text-white/60 transition-colors flex items-center justify-center gap-1 py-1"
                     >
-                      <PenLine className="w-3.5 h-3.5" />
-                      Autre
-                    </motion.button>
+                      <PenLine className="w-3 h-3" />
+                      Ecrire une reponse personnalisee
+                    </button>
                   </div>
                 </motion.div>
               )}
@@ -386,13 +464,13 @@ export function ChatInterface({
               )}
             </AnimatePresence>
 
-            {/* Back to suggestions button */}
+            {/* Back to validator mode */}
             {showCustomInput && suggestedReplies.length > 0 && (
               <button
                 onClick={() => setShowCustomInput(false)}
-                className="text-xs text-white/40 hover:text-white/60 transition-colors"
+                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center justify-center gap-1"
               >
-                Voir les suggestions
+                ← Revenir aux options de validation
               </button>
             )}
           </div>

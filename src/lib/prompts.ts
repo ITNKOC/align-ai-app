@@ -11,6 +11,7 @@ import type {
   GapAnalysis,
   CollectedProject,
 } from "./types";
+import { getVocabularyExamples } from "./vocabulary-helper";
 
 // ==================== PROMPT 1: CV EXTRACTION ====================
 
@@ -129,6 +130,17 @@ Calcule un score précis basé sur:
 - Expérience dans le domaine
 - Niveau de séniorité correspondant
 
+### 4. ANALYSE PROBLÈMES → SOLUTIONS (NOUVEAU - TRÈS IMPORTANT)
+Identifie les PROBLÈMES IMPLICITES que l'entreprise cherche à résoudre:
+- Lis entre les lignes de l'offre: "gérer une équipe grandissante" = problème de scaling
+- "Améliorer la performance" = problème de lenteur actuelle
+- "Mettre en place CI/CD" = problème de déploiement manuel
+- "Développer de nouvelles features" = problème de vélocité
+
+Pour chaque problème identifié, cherche dans le CV du candidat:
+- A-t-il RÉSOLU un problème SIMILAIRE ?
+- Pas juste "a la compétence" mais "a PROUVÉ qu'il peut résoudre CE TYPE de problème"
+
 ## FORMAT DE RÉPONSE (JSON strict)
 {
   "score": 75,
@@ -160,6 +172,25 @@ Calcule un score précis basé sur:
       "matchedWith": "React.js mentionné dans projets",
       "confidence": 95
     }
+  ],
+  "problemSolutionMatches": [
+    {
+      "implicitProblem": "Besoin de scaling (équipe qui grandit)",
+      "candidateProof": "A géré une équipe de 3 à 8 personnes chez X",
+      "relevanceScore": 9,
+      "cvEvidence": "Lead technique chez Company X"
+    },
+    {
+      "implicitProblem": "Amélioration de la performance",
+      "candidateProof": "Optimisation qui a réduit le temps de chargement de 40%",
+      "relevanceScore": 8,
+      "cvEvidence": "Projet Y - Performance optimization"
+    }
+  ],
+  "implicitProblemsDetected": [
+    "Scaling de l'équipe technique",
+    "Mise en place de bonnes pratiques",
+    "Accélération des déploiements"
   ]
 }
 
@@ -235,7 +266,8 @@ Analyse le CV pour déterminer si le candidat a des compétences transférables 
 IMPORTANT: Réponds UNIQUEMENT avec le JSON valide.`;
 }
 
-// ==================== PROMPT 2.6: SMART SINGLE-QUESTION STRATEGIST (v3.0) ====================
+// ==================== PROMPT 2.6: VALIDATOR MODE (v3.1 - Candidat Validateur) ====================
+// PARADIGME: L'IA PROPOSE, le candidat VALIDE en 1 clic
 
 export function getSmartStrategistPrompt(
   userMessage: string,
@@ -246,78 +278,117 @@ export function getSmartStrategistPrompt(
 ): string {
   const preAnalysis = currentSlot.preAnalysis;
 
-  return `Tu es un coach carrière efficace. Tu dois valider ou ajuster la stratégie pour ce gap EN UNE SEULE QUESTION.
+  // Extraire les infos pertinentes du CV pour proposer du contenu
+  const relevantExp = cvData.experiences?.find(e =>
+    e.bullets?.some(b => b.toLowerCase().includes(currentGap.skill.toLowerCase())) ||
+    e.title?.toLowerCase().includes(currentGap.skill.toLowerCase())
+  );
+  const relevantProject = cvData.projects?.find(p =>
+    p.techStack?.some(t => t.toLowerCase().includes(currentGap.skill.toLowerCase())) ||
+    p.description?.toLowerCase().includes(currentGap.skill.toLowerCase())
+  );
+  const relatedSkills = [...(cvData.skills?.languages || []), ...(cvData.skills?.frameworks || []), ...(cvData.skills?.toolsAndCloud || [])]
+    .filter(s => s.toLowerCase().includes(currentGap.skill.split(' ')[0].toLowerCase()) ||
+                 currentGap.skill.toLowerCase().includes(s.toLowerCase()));
 
-## GAP ACTUEL
-- Compétence: "${currentGap.skill}" (${currentGap.severity})
+  // Get vocabulary examples for this skill
+  const skillExamples = getVocabularyExamples(currentGap.skill);
+  const skillWithExamples = skillExamples.length > 0
+    ? `${currentGap.skill} (ex: ${skillExamples.slice(0, 3).join(", ")})`
+    : currentGap.skill;
+
+  return `Tu es un assistant bienveillant et encourageant qui PROPOSE du contenu pour le CV. JAMAIS de questions - TOUJOURS une proposition concrète.
+
+## PARADIGME "CANDIDAT VALIDATEUR"
+L'utilisateur ne doit PAS réfléchir. Tu analyses son CV et tu PROPOSES une formulation.
+Il clique [✓ Parfait] ou [Modifier].
+
+## TON ENCOURAGEANT (OBLIGATOIRE)
+- Commence TOUJOURS par une phrase positive sur ce que tu as trouvé dans le CV
+- Utilise des formulations comme: "Super !", "Excellent !", "J'ai trouvé quelque chose de bien !", "Bonne nouvelle !"
+- Même si tu ne trouves pas d'expérience directe, reste positif: "Pas de souci !", "C'est normal !", "On va trouver une solution !"
+- Valorise TOUJOURS les compétences existantes du candidat avant de proposer
+
+## GAP À TRAITER
+- Compétence: "${skillWithExamples}" (${currentGap.severity})
 - Catégorie: ${currentGap.category}
+${skillExamples.length > 0 ? `- 💡 Exemples d'outils: ${skillExamples.join(", ")}` : ""}
 
-## PRÉ-ANALYSE AUTOMATIQUE
+## ÉLÉMENTS TROUVÉS DANS LE CV
+${relevantExp ? `
+📍 EXPÉRIENCE LIÉE: ${relevantExp.title} @ ${relevantExp.company}
+   - ${relevantExp.bullets?.slice(0, 2).join('\n   - ') || 'Pas de détails'}
+` : ''}
+${relevantProject ? `
+🔧 PROJET LIÉ: ${relevantProject.name} (${relevantProject.year || 'N/A'})
+   - ${relevantProject.description?.slice(0, 150) || ''}
+   - Stack: ${relevantProject.techStack?.join(', ') || 'N/A'}
+` : ''}
+${relatedSkills.length > 0 ? `
+⚡ COMPÉTENCES PROCHES: ${relatedSkills.join(', ')}
+` : ''}
 ${preAnalysis ? `
-- Compétences CV liées trouvées: ${preAnalysis.potentialMatches.join(", ") || "Aucune"}
-- Projets potentiellement liés: ${preAnalysis.relatedProjects.join(", ") || "Aucun"}
-- Stratégie suggérée: ${preAnalysis.suggestedStrategy || "fast_learner"}
-- Confiance: ${preAnalysis.confidence}%
-- Raisonnement: ${preAnalysis.reasoning}
-` : "Pas de pré-analyse disponible"}
+📊 PRÉ-ANALYSE: ${preAnalysis.reasoning} (confiance: ${preAnalysis.confidence}%)
+` : ''}
 
 ## RÉPONSE DU CANDIDAT
 "${userMessage}"
 
-## RÈGLES STRICTES
-
+## TA MISSION
 ${isFirstQuestion ? `
-### PREMIÈRE QUESTION (tu dois poser UNE question ciblée)
-1. Si confiance >= 70%: Demande une SIMPLE CONFIRMATION
-   Ex: "Je vois que vous avez utilisé X. Pouvez-vous confirmer votre niveau avec cette technologie?"
+### PREMIÈRE INTERACTION - PROPOSE UNE FORMULATION CONCRÈTE
 
-2. Si confiance < 70%: Pose UNE question directe
-   Ex: "Avez-vous déjà travaillé avec ${currentGap.skill} ou une technologie similaire?"
+SI tu as trouvé quelque chose dans le CV:
+→ COMMENCE par "Super !" ou "Excellent !" puis explique ce que tu as trouvé
+→ PROPOSE une formulation précise pour le CV/lettre
+→ Exemple: "Super ! J'ai repéré votre projet X avec React - c'est exactement ce qu'il nous faut ! Je propose d'ajouter:
+   **'Développement d'interfaces React avec gestion d'état (Projet X, 2024)'**"
 
-3. NE POSE PAS de question si confiance >= 90% → Passe directement à next_gap
+SI tu n'as rien trouvé:
+→ RESTE POSITIF : "Pas de souci !" ou "C'est normal, on va trouver une solution !"
+→ PROPOSE de mettre en avant la capacité d'apprentissage
+→ Exemple: "Pas de souci ! Docker n'est pas encore dans votre boîte à outils, mais votre profil montre une vraie capacité d'adaptation. Je propose:
+   **'Forte capacité d'apprentissage technique - Motivation à maîtriser Docker rapidement'**"
+
+NE POSE PAS DE QUESTION. PROPOSE DIRECTEMENT AVEC ENTHOUSIASME.
 ` : `
-### DEUXIÈME QUESTION (DERNIÈRE - tu dois conclure)
-- Quelle que soit la réponse, tu DOIS proposer une stratégie finale
-- Si le candidat a de l'expérience → "add_skill" ou "project_based"
-- Si le candidat a des compétences proches → "transferable"
-- Si le candidat n'a pas d'expérience → "fast_learner"
-- PASSE TOUJOURS à next_gap après cette question
+### APRÈS VALIDATION - CÉLÈBRE ET PASSE AU SUIVANT
+Le candidat a validé ou modifié. Célèbre sa décision et passe au gap suivant.
+→ "Parfait, excellent choix !" ou "Super, c'est noté !" puis IMMÉDIATEMENT nextPhase: "next_gap"
 `}
-
-## STRATÉGIES
-- "add_skill": A la compétence → mettre en avant
-- "transferable": Compétence proche → faire le lien
-- "project_based": Projet utilisant la compétence → détailler
-- "fast_learner": Pas d'expérience → capacité d'apprentissage
 
 ## FORMAT JSON (strict)
 {
-  "message": "Ta réponse courte (2 phrases max, 1 question max)",
+  "message": "Ta proposition (inclure la formulation en **gras**). PAS DE QUESTION.",
+  "proposedContent": "La formulation exacte proposée pour le CV ou la lettre",
   "suggestedReplies": [
-    {"id": "r1", "label": "Oui, expérience directe", "value": "Oui, j'ai utilisé ${currentGap.skill} dans mes projets.", "type": "positive"},
-    {"id": "r2", "label": "Non, pas directement", "value": "Non, je n'ai pas d'expérience directe avec ${currentGap.skill}.", "type": "negative"},
-    {"id": "r3", "label": "Un peu / Similaire", "value": "J'ai une expérience limitée ou avec des technologies similaires.", "type": "neutral"}
+    {"id": "r1", "label": "✓ Parfait", "value": "C'est parfait, je valide cette formulation.", "type": "positive"},
+    {"id": "r2", "label": "Modifier", "value": "Je voudrais modifier légèrement cette proposition.", "type": "neutral"},
+    {"id": "r3", "label": "Pas cette compétence", "value": "Je préfère ne pas mettre en avant cette compétence.", "type": "negative"}
   ],
   "extraction": {
     "hasExperience": true | false | null,
     "experienceLevel": "none" | "beginner" | "intermediate" | "advanced" | null,
-    "projectMentioned": "nom du projet si mentionné" | null,
-    "transferableSkill": "compétence transférable identifiée" | null
+    "projectMentioned": "${relevantProject?.name || 'null'}",
+    "transferableSkill": "${relatedSkills[0] || 'null'}"
   },
   "strategy": {
     "gapSkill": "${currentGap.skill}",
-    "approach": "add_skill" | "transferable" | "project_based" | "fast_learner",
-    "details": "Explication courte",
+    "approach": "${preAnalysis?.suggestedStrategy || 'fast_learner'}",
+    "details": "Explication",
     "validated": true,
-    "evidenceUsed": ["preuve 1"],
-    "cvSections": ["Experience", "Skills"],
-    "coverLetterPoints": ["Point à mentionner dans la lettre"]
-  } | null,
-  "nextPhase": "continue" | "next_gap",
-  "confidenceToClose": 0-100
+    "evidenceUsed": [${relatedSkills.map(s => `"${s}"`).join(', ') || '"Capacité d\'apprentissage"'}],
+    "cvSections": ["Skills"],
+    "coverLetterPoints": ["Point à mentionner"]
+  },
+  "nextPhase": "${isFirstQuestion ? 'continue' : 'next_gap'}",
+  "confidenceToClose": ${preAnalysis?.confidence || 50}
 }
 
-RÈGLE ABSOLUE: Si c'est la 2ème question OU confiance >= 85 → "nextPhase": "next_gap"`;
+RÈGLE ABSOLUE:
+- JAMAIS de question ouverte
+- TOUJOURS une proposition concrète en **gras** dans le message
+- Si le candidat dit "Parfait" → nextPhase: "next_gap"`;
 }
 
 // ==================== PROMPT 3: STRATEGIST SYSTEM (ReAct Framework) ====================
@@ -346,7 +417,14 @@ export function getStrategistSystemPrompt(
     })
     .join("\n");
 
-  return `Tu es un coach carrière expert utilisant le framework ReAct (Reasoning + Acting).
+  return `Tu es un coach carrière bienveillant et encourageant utilisant le framework ReAct (Reasoning + Acting).
+
+## TON ENCOURAGEANT (OBLIGATOIRE)
+- Commence TOUJOURS tes messages par quelque chose de positif
+- Utilise des formulations chaleureuses: "Super !", "Excellent !", "Bonne nouvelle !", "C'est parfait !"
+- Valorise les efforts et les compétences du candidat
+- Même quand il y a un gap, reste positif: "On va trouver une solution ensemble !"
+- Célèbre chaque avancée: "Bravo, on progresse bien !"
 
 ## RÈGLE D'OR ABSOLUE
 🚫 NE JAMAIS INVENTER DE FAITS
@@ -454,7 +532,14 @@ export function getStrategistResponsePrompt(
 ): string {
   const questionsAsked = currentSlot.questionsAsked || 0;
 
-  return `Tu es un coach carrière expert. Analyse la réponse du candidat et génère ta prochaine action.
+  return `Tu es un coach carrière bienveillant et encourageant. Analyse la réponse du candidat et génère ta prochaine action.
+
+## TON ENCOURAGEANT (OBLIGATOIRE)
+- Commence TOUJOURS tes messages par quelque chose de positif
+- Utilise des formulations comme: "Super !", "Excellent !", "Bonne nouvelle !", "Parfait !"
+- Valorise ce que le candidat partage, même si c'est peu
+- Si le candidat n'a pas d'expérience, reste positif: "Pas de souci !", "C'est normal !"
+- Célèbre chaque information collectée: "Génial, c'est exactement ce qu'il nous faut !"
 
 ## MÉTHODE REACT
 Tu dois suivre le cycle: THOUGHT (réflexion) → ACTION (question/validation) → OBSERVATION (extraction)
@@ -599,7 +684,9 @@ ${conversationHistory}
 IMPORTANT: Réponds UNIQUEMENT avec le JSON valide, sans markdown.`;
 }
 
-// ==================== PROMPT 5: DOCUMENT GENERATION (Enhanced) ====================
+// ==================== PROMPT 5: DOCUMENT GENERATION v4.0 (CV PARFAIT) ====================
+// Paradigme: MINIMISER LES RAISONS DE REJET > Maximiser le match
+// Features: Pourquoi Moi, Ordre Dynamique, Mapping Synonymes, ATS-Optimisé
 
 export function getDocumentGenerationPrompt(
   cvData: CVData,
@@ -640,7 +727,39 @@ export function getDocumentGenerationPrompt(
     .flatMap((slot) => slot.relatedProjects)
     .filter((p, i, arr) => arr.findIndex((x) => x.name === p.name) === i);
 
-  return `Tu es un expert en rédaction de CV et lettres de motivation en LaTeX.
+  // Build keyword synonym map for ATS optimization
+  const keywordSynonyms = `
+MAPPING SYNONYMES ATS (utilise le terme de l'offre):
+- JavaScript/JS/ECMAScript → utilise exactement le terme de l'offre
+- TypeScript/TS → utilise exactement le terme de l'offre
+- React/ReactJS/React.js → utilise exactement le terme de l'offre
+- Node/NodeJS/Node.js → utilise exactement le terme de l'offre
+- Python/Python3 → utilise exactement le terme de l'offre
+- Docker/Containerization → utilise exactement le terme de l'offre
+- CI/CD/Continuous Integration/DevOps → utilise exactement le terme de l'offre
+- Agile/Scrum/Kanban → utilise exactement le terme de l'offre
+- AWS/Amazon Web Services/Cloud → utilise exactement le terme de l'offre
+- PostgreSQL/Postgres/SQL → utilise exactement le terme de l'offre
+- MongoDB/NoSQL → utilise exactement le terme de l'offre
+- REST/RESTful/API → utilise exactement le terme de l'offre
+- Git/GitHub/GitLab/Version Control → utilise exactement le terme de l'offre
+- Testing/Tests/TDD/Unit Tests → utilise exactement le terme de l'offre
+`;
+
+  return `Tu es un expert en rédaction de CV "chirurgicaux" — parfaitement ciblés pour MINIMISER LES RAISONS DE REJET.
+
+## 🎯 PARADIGME FONDAMENTAL: MINIMISER LE REJET
+
+Les recruteurs passent 6 SECONDES sur un CV. Ils cherchent des RAISONS DE REJETER, pas des raisons d'embaucher.
+
+**Ton objectif:** Éliminer TOUTES les raisons de rejet:
+1. ❌ Gap visible → ✅ Comblé ou expliqué
+2. ❌ Doute sur les compétences → ✅ Preuves concrètes avec métriques
+3. ❌ Confusion sur le profil → ✅ "Pourquoi Moi" ultra-clair en 6 secondes
+4. ❌ Risque perçu → ✅ Expériences similaires au poste
+5. ❌ Bruit/infos non pertinentes → ✅ Tout est ciblé sur CETTE offre
+
+${keywordSynonyms}
 
 ## PROFIL DU CANDIDAT
 ${JSON.stringify(cvData, null, 2)}
@@ -654,41 +773,70 @@ ${jobDescription}
 - Score de compatibilité: ${analysisResult.score}%
 - Poste visé: ${analysisResult.jobTitle}
 - Entreprise: ${analysisResult.company}
-- Mots-clés à intégrer: ${analysisResult.keywords.join(", ")}
+- Mots-clés EXACTS de l'offre à utiliser: ${analysisResult.keywords.join(", ")}
 - Compétences matchées: ${analysisResult.matchedSkills.join(", ")}
+- Gaps identifiés: ${analysisResult.gaps.map(g => g.skill).join(", ")}
 
 ## STRATÉGIES DÉFINIES POUR CHAQUE GAP
 ${strategiesSummary}
 
-## PROJETS ADDITIONNELS COLLECTÉS PENDANT L'ENTRETIEN
+## PROJETS ADDITIONNELS COLLECTÉS
 ${allCollectedProjects.map((p) => `- ${p.name} (${p.context}, ${p.year || "N/A"}): ${p.description}
   Technologies: ${p.technologies.join(", ")}
   ${p.achievements?.length ? `Réalisations: ${p.achievements.join("; ")}` : ""}
   ${p.impact ? `Impact: ${p.impact}` : ""}`).join("\n\n")}
 
-## MISSION
+## 📋 MISSION: GÉNÉRER UN CV PARFAIT
 
-### 1. CV.tex
-Génère un CV LaTeX professionnel qui:
-- Reformule les bullet points avec les mots-clés de l'offre
-- Intègre les projets collectés pendant l'entretien (académiques, perso, etc.)
-- Met en avant les compétences matchées
-- Applique les stratégies définies (add_skill, reframe, etc.)
-- Ajoute les nouvelles compétences validées
+### ÉTAPE 1: Section "POURQUOI MOI" (CRITIQUE)
+Cette section apparaît EN HAUT du CV, juste après le nom. Elle doit répondre en 3-4 lignes à:
+"Pourquoi ce candidat est parfait pour CE poste spécifique?"
+
+Structure obligatoire:
+- Phrase 1: X années d'expérience dans [domaine pertinent pour l'offre]
+- Phrase 2: Expertise principale qui MATCHE directement avec l'offre
+- Phrase 3: 2-3 compétences clés EXACTEMENT comme dans l'offre
+- Phrase 4: Élément différenciant (projet, métrique, réalisation)
+
+### ÉTAPE 2: Ordre DYNAMIQUE des Expériences
+RÉORDONNE les expériences du candidat PAR PERTINENCE pour cette offre:
+- Position 1: L'expérience la PLUS pertinente (même si pas la plus récente)
+- Position 2: La 2ème plus pertinente
+- etc.
+
+Critères de pertinence:
+- Technologies utilisées matchent l'offre
+- Responsabilités similaires au poste
+- Secteur/domaine similaire
+- Métriques impressionnantes
+
+### ÉTAPE 3: Reformulation ATS
+Pour CHAQUE bullet point:
+1. Identifie les mots-clés de l'offre qui peuvent s'appliquer
+2. Reformule en utilisant EXACTEMENT ces mots-clés
+3. Ajoute des métriques si disponibles (%, X utilisateurs, etc.)
+4. Structure: [Action] + [Technologie de l'offre] + [Résultat mesurable]
+
+### ÉTAPE 4: Compétences Ciblées
+Liste les compétences dans cet ORDRE:
+1. Compétences EXACTEMENT demandées dans l'offre (en premier)
+2. Compétences proches/transférables
+3. Autres compétences pertinentes
 
 ### 2. CoverLetter.tex
-Structure:
-1. **Accroche** (1 paragraphe): Pourquoi cette entreprise spécifiquement
-2. **Fit technique** (2 paragraphes): Compétences qui matchent avec exemples CONCRETS des projets
-3. **Adaptabilité** (1 paragraphe): Pour les gaps "fast_learner", montrer la capacité d'apprentissage
-4. **Conclusion** (1 paragraphe): Motivation et disponibilité
+Structure optimisée:
+1. **Accroche personnalisée** (2-3 phrases): Pourquoi ${analysisResult.company} spécifiquement
+2. **"Pourquoi moi"** (1 paragraphe): Les 3 raisons principales de m'embaucher
+3. **Preuve technique** (1 paragraphe): UN projet concret avec métriques qui prouve la compétence
+4. **Gaps comblés** (1 paragraphe): Pour les stratégies "fast_learner" ou "transferable"
+5. **Conclusion** (2 phrases): Motivation + disponibilité
 
-## TEMPLATE CV ATS-OPTIMISÉ (v3.0)
+## TEMPLATE CV ATS-OPTIMISÉ (v4.0 - CV PARFAIT)
 % Format optimisé pour les systèmes ATS - pas d'icônes, pas de couleurs, single column
 \\documentclass[11pt,a4paper]{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage[T1]{fontenc}
-\\usepackage[top=1.5cm,bottom=1.5cm,left=2cm,right=2cm]{geometry}
+\\usepackage[top=1.2cm,bottom=1.2cm,left=1.8cm,right=1.8cm]{geometry}
 \\usepackage{enumitem}
 \\usepackage{titlesec}
 \\usepackage{hyperref}
@@ -697,74 +845,78 @@ Structure:
 % Configuration ATS-friendly
 \\hypersetup{colorlinks=false,pdfborder={0 0 0}}
 \\setlength{\\parindent}{0pt}
-\\setlength{\\parskip}{0.3em}
+\\setlength{\\parskip}{0.2em}
 \\pagestyle{empty}
 
 % Sections avec ligne simple
 \\titleformat{\\section}{\\large\\bfseries\\uppercase}{}{0em}{}[\\hrule]
-\\titlespacing*{\\section}{0pt}{14pt}{8pt}
+\\titlespacing*{\\section}{0pt}{12pt}{6pt}
 
 \\begin{document}
 
 % ===== EN-TÊTE =====
 \\begin{center}
-{\\LARGE\\bfseries PRÉNOM NOM}\\\\[6pt]
-{\\large Titre Professionnel Aligné sur le Poste}\\\\[8pt]
-email@exemple.com \\textbar{} +33 6 XX XX XX XX \\textbar{} Ville, France\\\\
-linkedin.com/in/profil \\textbar{} github.com/profil
+{\\LARGE\\bfseries ${candidateName.toUpperCase()}}\\\\[4pt]
+{\\large ${analysisResult.jobTitle}}\\\\[6pt]
+${cvData.personalInfo.email || "email@exemple.com"} \\textbar{} ${cvData.personalInfo.phone || "+33 6 XX XX XX XX"} \\textbar{} ${cvData.personalInfo.location || "France"}\\\\
+${cvData.personalInfo.linkedinUrl ? cvData.personalInfo.linkedinUrl.replace("https://", "") : ""} ${cvData.personalInfo.githubUrl ? "\\textbar{} " + cvData.personalInfo.githubUrl.replace("https://", "") : ""}
 \\end{center}
 
-\\vspace{0.3cm}
+\\vspace{0.2cm}
 
-% ===== PROFIL =====
-\\section{Profil}
-Résumé professionnel de 3-4 lignes intégrant naturellement les MOTS-CLÉS de l'offre d'emploi. Mentionner les années d'expérience, le domaine d'expertise principal, et 2-3 compétences clés demandées dans l'offre.
+% ===== POURQUOI MOI (SECTION CRITIQUE) =====
+\\section{Pourquoi Moi}
+% Cette section doit convaincre en 6 SECONDES. 3-4 lignes MAX.
+% Structure: Années d'expérience + Expertise principale + Compétences clés de l'offre + Élément différenciant
+[GÉNÈRE ICI: Développeur avec X années d'expérience en [domaine de l'offre]. Expertise approfondie en [compétences matchées]. Maîtrise de [mots-clés EXACTS de l'offre]. [Métrique ou réalisation impressionnante].]
 
-% ===== COMPÉTENCES (en haut pour ATS) =====
-\\section{Compétences}
-\\textbf{Langages :} Python, JavaScript, TypeScript, SQL, Java\\\\
-\\textbf{Frameworks :} React, Node.js, Django, FastAPI, Next.js\\\\
-\\textbf{Outils \\& Cloud :} Git, Docker, AWS, PostgreSQL, MongoDB, CI/CD\\\\
-\\textbf{Méthodologies :} Agile, Scrum, TDD, Code Review
+% ===== COMPÉTENCES (triées par pertinence pour l'offre) =====
+\\section{Compétences Techniques}
+% ORDRE: 1) Compétences de l'offre en premier 2) Compétences proches 3) Autres
+\\textbf{${analysisResult.keywords.slice(0, 3).join(", ")} :} [Les compétences qui matchent EXACTEMENT l'offre]\\\\
+\\textbf{Frameworks \\& Outils :} [Autres compétences pertinentes]\\\\
+\\textbf{Méthodologies :} [Agile, Scrum, etc. si mentionnés dans l'offre]
 
-% ===== EXPÉRIENCE PROFESSIONNELLE =====
+% ===== EXPÉRIENCE PROFESSIONNELLE (ORDRE DYNAMIQUE PAR PERTINENCE) =====
 \\section{Expérience Professionnelle}
+% IMPORTANT: Réordonne les expériences du candidat PAR PERTINENCE pour l'offre
+% Position 1 = expérience la PLUS pertinente (pas forcément la plus récente)
 
-\\textbf{Titre du Poste} \\hfill MM/AAAA -- Présent\\\\
-\\textit{Nom de l'Entreprise, Ville}
-\\begin{itemize}[leftmargin=1.5em,topsep=4pt,itemsep=2pt]
-\\item Augmenté les performances de X\\% en implémentant [MOT-CLÉ de l'offre]
-\\item Développé [fonctionnalité/projet] utilisé par X utilisateurs, réduisant Y de Z\\%
-\\item Collaboré avec équipe de X personnes pour livrer [projet] en respectant les délais
+% Pour chaque bullet point:
+% - Utilise les MOTS-CLÉS EXACTS de l'offre
+% - Ajoute des MÉTRIQUES (%, utilisateurs, €, temps)
+% - Structure: [Verbe d'action] + [Technologie de l'offre] + [Résultat mesurable]
+
+\\textbf{[Titre aligné sur l'offre]} \\hfill [Dates]\\\\
+\\textit{[Entreprise], [Ville]}
+\\begin{itemize}[leftmargin=1.5em,topsep=3pt,itemsep=1pt]
+\\item [Verbe] [MOT-CLÉ OFFRE]: [Action] permettant [RÉSULTAT QUANTIFIÉ]
+\\item [Verbe] [MOT-CLÉ OFFRE]: [Action] pour [X utilisateurs/clients]
+\\item [Verbe] collaboration avec équipe de X personnes sur [projet utilisant technologies de l'offre]
 \\end{itemize}
 
-\\textbf{Titre du Poste Précédent} \\hfill MM/AAAA -- MM/AAAA\\\\
-\\textit{Nom de l'Entreprise, Ville}
-\\begin{itemize}[leftmargin=1.5em,topsep=4pt,itemsep=2pt]
-\\item Réalisé [accomplissement mesurable] avec [technologies de l'offre]
-\\item Conçu et mis en place [système/processus] améliorant [métrique] de X\\%
-\\end{itemize}
+% Répète pour chaque expérience, ordonnées par pertinence décroissante
 
-% ===== PROJETS =====
+% ===== PROJETS (inclure projets perso, académiques, hackathons) =====
 \\section{Projets}
 
-\\textbf{Nom du Projet} -- \\textit{Personnel/Académique, AAAA}\\\\
-Description concise du projet avec son objectif et impact. Technologies: React, Node.js, PostgreSQL.\\\\
-Résultat: X utilisateurs, Y\\% d'amélioration, ou autre métrique mesurable.
+% IMPORTANT: Inclure TOUS les projets collectés pendant l'entretien
+% Même les projets perso/académiques si pertinents pour l'offre
 
-\\textbf{Autre Projet} -- \\textit{Hackathon/Stage, AAAA}\\\\
-Description du projet. Technologies utilisées alignées avec l'offre.
+\\textbf{[Nom du Projet]} -- \\textit{[Contexte: Professionnel/Personnel/Académique], [Année]}\\\\
+[Description ciblée sur les besoins de l'offre]. Technologies: [MOTS-CLÉS OFFRE].\\\\
+Résultat: [Métrique si disponible].
 
 % ===== FORMATION =====
 \\section{Formation}
 
-\\textbf{Diplôme (Bac+X)} \\hfill AAAA -- AAAA\\\\
-\\textit{Nom de l'École/Université, Ville}\\\\
-Spécialisation ou mention si pertinente.
+\\textbf{[Diplôme]} \\hfill [Années]\\\\
+\\textit{[École], [Ville]}\\\\
+[Spécialisation pertinente pour l'offre si applicable]
 
-% ===== LANGUES =====
+% ===== LANGUES (si pertinent) =====
 \\section{Langues}
-Français (Natif) -- Anglais (Courant/TOEIC XXX) -- Espagnol (Intermédiaire)
+[Langue 1] ([Niveau]) -- [Langue 2] ([Niveau])
 
 \\end{document}
 

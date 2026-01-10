@@ -286,6 +286,45 @@ export async function getGeneratedDocuments(applicationId: string) {
 }
 
 /**
+ * Get comparison data for Avant/Après display
+ */
+export async function getComparisonData(applicationId: string) {
+  try {
+    const application = await prisma.application.findUnique({
+      where: { id: applicationId },
+      include: {
+        jobOffer: {
+          include: {
+            masterProfile: true,
+          },
+        },
+      },
+    });
+
+    if (!application) {
+      return { success: false, error: "Application non trouvée" };
+    }
+
+    const cvData = application.jobOffer.masterProfile.structuredData as unknown as CVData;
+    const analysisResult = application.jobOffer.analysisResult as unknown as AnalysisResult;
+    const strategies = (application.strategies || {}) as unknown as Record<string, Strategy>;
+
+    return {
+      success: true,
+      cvData,
+      analysisResult,
+      strategies,
+    };
+  } catch (error) {
+    console.error("Get comparison data error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Une erreur est survenue",
+    };
+  }
+}
+
+/**
  * Regenerate documents with optional user instructions
  */
 export async function regenerateDocuments(

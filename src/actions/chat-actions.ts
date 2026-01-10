@@ -28,6 +28,7 @@ import type {
   LearnedGap,
 } from "@/lib/types";
 import { saveLearnedGap, findMatchingLearnedGaps } from "./profile-actions";
+import { getVocabularyExamples } from "@/lib/vocabulary-helper";
 
 // ==================== TYPES ====================
 
@@ -841,7 +842,7 @@ export async function initializeChat(
       gapSlots[currentGapIndex].status = "exploring";
     }
 
-    // v3.0: Generate smart initial message based on pre-analysis
+    // v3.1: Generate VALIDATOR mode initial message - PROPOSE content, don't ask
     const firstGap = analysisResult.gaps[currentGapIndex];
     const firstSlot = gapSlots[currentGapIndex];
     const preAnalysis = firstSlot?.preAnalysis;
@@ -850,39 +851,70 @@ export async function initializeChat(
     const autoFilledCount = gapSlots.filter(s => s.status === "filled").length;
     const remainingCount = gapSlots.length - autoFilledCount;
 
+    // Find relevant CV elements for this gap
+    const relevantProject = cvData.projects?.find(p =>
+      p.techStack?.some(t => t.toLowerCase().includes(firstGap.skill.toLowerCase())) ||
+      p.description?.toLowerCase().includes(firstGap.skill.toLowerCase())
+    );
+    const relevantExp = cvData.experiences?.find(e =>
+      e.bullets?.some(b => b.toLowerCase().includes(firstGap.skill.toLowerCase()))
+    );
+
     let initialMessage = "";
+    let proposedContent = "";
+
+    // Get vocabulary examples for this skill
+    const skillExamples = getVocabularyExamples(firstGap.skill);
+    const vocabularyHelp = skillExamples.length > 0
+      ? `\n\n💡 *${firstGap.skill} inclut par exemple: ${skillExamples.slice(0, 4).join(", ")}*`
+      : "";
+
+    // Header with auto-filled count (encouraging tone)
     if (autoFilledCount > 0) {
-      initialMessage = `J'ai analysé votre profil et trouvé des correspondances pour ${autoFilledCount} compétence${autoFilledCount > 1 ? "s" : ""}. `;
-      initialMessage += `Il me reste ${remainingCount} question${remainingCount > 1 ? "s" : ""} rapide${remainingCount > 1 ? "s" : ""} pour optimiser votre candidature.\n\n`;
+      initialMessage = `🎉 Super nouvelle ! J'ai trouvé des correspondances pour ${autoFilledCount} compétence${autoFilledCount > 1 ? "s" : ""} automatiquement !\n\n`;
     }
 
-    if (preAnalysis && preAnalysis.potentialMatches.length > 0) {
-      initialMessage += `Concernant **${firstGap.skill}**, je vois que vous avez ${preAnalysis.potentialMatches.join(", ")} dans votre CV. Pouvez-vous me confirmer votre niveau d'expérience avec cette technologie ?`;
+    // VALIDATOR MODE: PROPOSE content with encouraging tone
+    if (preAnalysis && preAnalysis.confidence >= 60 && preAnalysis.potentialMatches.length > 0) {
+      // High confidence - propose based on CV
+      proposedContent = `${firstGap.skill} - Expérience avec ${preAnalysis.potentialMatches.slice(0, 2).join(" et ")}`;
+      if (relevantProject) {
+        proposedContent = `${firstGap.skill} (${relevantProject.name}, ${relevantProject.year || "projet"})`;
+      }
+      initialMessage += `🎯 Excellent ! Pour **${firstGap.skill}**, j'ai repéré **${preAnalysis.potentialMatches[0]}** dans votre profil - c'est exactement ce qu'il nous faut !\n\nJe propose d'ajouter :\n**"${proposedContent}"**`;
+    } else if (relevantProject) {
+      // Found a project
+      proposedContent = `${firstGap.skill} - Projet ${relevantProject.name}`;
+      initialMessage += `🎯 Super ! Pour **${firstGap.skill}**, j'ai trouvé votre projet **"${relevantProject.name}"** - parfait !\n\nJe propose d'ajouter :\n**"${proposedContent}"**`;
+    } else if (relevantExp) {
+      // Found an experience
+      proposedContent = `${firstGap.skill} - ${relevantExp.title}`;
+      initialMessage += `🎯 Bonne nouvelle ! Pour **${firstGap.skill}**, j'ai vu votre expérience chez **${relevantExp.company}** - on peut l'utiliser !\n\nJe propose d'ajouter :\n**"${proposedContent}"**`;
     } else {
-      initialMessage += `Concernant **${firstGap.skill}**, avez-vous une expérience directe ou similaire avec cette technologie ?`;
+      // No match - propose fast learner with positive framing + vocabulary help
+      proposedContent = `Forte motivation pour ${firstGap.skill} - Apprentissage rapide`;
+      initialMessage += `💪 Pas de souci ! Pour **${firstGap.skill}**, votre profil montre une vraie capacité d'adaptation.${vocabularyHelp}\n\nJe propose de mentionner :\n**"${proposedContent}"**\n\nLes recruteurs adorent les profils motivés qui apprennent vite !`;
     }
 
-    // Smart suggested replies based on pre-analysis
+    // VALIDATOR MODE: Suggested replies are [Parfait] [Modifier] [Passer]
     const initialSuggestedReplies: SuggestedReply[] = [
       {
         id: "reply_1",
-        label: preAnalysis?.confidence && preAnalysis.confidence >= 50
-          ? "Oui, je confirme"
-          : `Oui, j'ai utilisé ${firstGap?.skill}`,
-        value: `Oui, j'ai de l'expérience avec ${firstGap?.skill || "cette technologie"}.`,
+        label: "✓ Parfait",
+        value: "C'est parfait, je valide cette formulation.",
         type: "positive",
       },
       {
         id: "reply_2",
-        label: "Non, pas d'expérience",
-        value: `Non, je n'ai pas d'expérience directe avec ${firstGap?.skill || "cette technologie"}.`,
-        type: "negative",
+        label: "Modifier",
+        value: "Je voudrais modifier légèrement cette proposition.",
+        type: "neutral",
       },
       {
         id: "reply_3",
-        label: "Un peu / Technologie similaire",
-        value: `J'ai une expérience partielle ou avec des technologies similaires à ${firstGap?.skill || "celle-ci"}.`,
-        type: "neutral",
+        label: "Pas cette compétence",
+        value: "Je préfère ne pas mettre en avant cette compétence.",
+        type: "negative",
       },
     ];
 

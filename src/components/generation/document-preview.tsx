@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { GenerationLoading } from "@/components/shared/educational-loading";
 
 interface DocumentPreviewProps {
   cvPdfUrl?: string;
@@ -605,9 +606,12 @@ function GenerationLoader({ progress }: GenerationLoaderProps) {
       <h3 className="text-xl md:text-2xl font-bold text-white">
         Génération en cours...
       </h3>
-      <p className="mt-2 text-sm md:text-base text-white/50 text-center max-w-sm">
+      <p className="mt-2 text-sm md:text-base text-white/50 text-center max-w-sm mb-6">
         Création de vos documents personnalisés
       </p>
+
+      {/* Educational tips while waiting */}
+      <GenerationLoading isVisible={true} />
 
       {/* Enhanced Progress bar - Mobile First */}
       <div className="mt-8 w-full max-w-sm md:max-w-md">

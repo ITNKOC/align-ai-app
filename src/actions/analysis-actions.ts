@@ -8,7 +8,8 @@
 import { prisma } from "@/lib/db";
 import { generateJSON } from "@/lib/gemini";
 import { getJobAnalysisPrompt } from "@/lib/prompts";
-import type { CVData, AnalysisResult, GapAnalysis } from "@/lib/types";
+import type { CVData, AnalysisResult, GapAnalysis, LearnedGap } from "@/lib/types";
+import { findMatchingLearnedGaps } from "./profile-actions";
 
 // ==================== TYPES ====================
 
@@ -366,6 +367,83 @@ export async function getGapStatistics(applicationId: string) {
     };
   } catch (error) {
     console.error("Get statistics error:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Une erreur est survenue",
+    };
+  }
+}
+
+// ==================== AUTO-RESOLUTION ====================
+
+export interface AutoResolutionPreview {
+  totalGaps: number;
+  autoResolvableCount: number;
+  autoResolvableGaps: {
+    skill: string;
+    learnedGap: LearnedGap;
+    confidence: number;
+  }[];
+  remainingGaps: GapAnalysis[];
+  canUseOneClickMode: boolean;
+}
+
+/**
+ * Preview which gaps can be auto-resolved from learned gaps.
+ * Used to show badges on analyze page and enable 1-click mode.
+ */
+export async function checkAutoResolvableGaps(
+  gaps: GapAnalysis[]
+): Promise<{
+  success: boolean;
+  data?: AutoResolutionPreview;
+  error?: string;
+}> {
+  try {
+    const skills = gaps.map((g) => g.skill);
+    const result = await findMatchingLearnedGaps(skills);
+
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    const matchedGaps = result.data || {};
+    const autoResolvableGaps: AutoResolutionPreview["autoResolvableGaps"] = [];
+    const remainingGaps: GapAnalysis[] = [];
+
+    for (const gap of gaps) {
+      const learnedGap = matchedGaps[gap.skill];
+      if (learnedGap && learnedGap.confidence >= 0.7) {
+        autoResolvableGaps.push({
+          skill: gap.skill,
+          learnedGap,
+          confidence: learnedGap.confidence,
+        });
+      } else {
+        remainingGaps.push(gap);
+      }
+    }
+
+    // 1-click mode available if ALL gaps are auto-resolvable
+    // OR if score is high enough and only minor gaps remain
+    const canUseOneClickMode =
+      remainingGaps.length === 0 ||
+      (autoResolvableGaps.length > 0 &&
+        remainingGaps.every((g) => g.severity === "minor"));
+
+    return {
+      success: true,
+      data: {
+        totalGaps: gaps.length,
+        autoResolvableCount: autoResolvableGaps.length,
+        autoResolvableGaps,
+        remainingGaps,
+        canUseOneClickMode,
+      },
+    };
+  } catch (error) {
+    console.error("Check auto-resolvable gaps error:", error);
     return {
       success: false,
       error:

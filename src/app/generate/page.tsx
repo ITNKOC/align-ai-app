@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -20,16 +20,21 @@ import {
 import { AppNavbar } from "@/components/shared/app-navbar";
 import { PhaseIndicator } from "@/components/shared/phase-indicator";
 import { DocumentPreview } from "@/components/generation/document-preview";
+import { BeforeAfterComparison } from "@/components/generation/before-after-comparison";
+import { useCelebration } from "@/components/shared/celebration";
 import {
   generateDocuments,
   getGeneratedDocuments,
   regenerateDocuments,
   regenerateFollowUpEmail,
+  getComparisonData,
 } from "@/actions/generation-actions";
-import type { FollowUpEmail } from "@/lib/types";
+import type { FollowUpEmail, CVData, AnalysisResult, Strategy } from "@/lib/types";
 
 export default function GeneratePage() {
   const router = useRouter();
+  const { celebrate } = useCelebration();
+  const hasCelebrated = useRef(false);
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
@@ -42,6 +47,12 @@ export default function GeneratePage() {
   const [followUpEmail, setFollowUpEmail] = useState<FollowUpEmail | undefined>();
   const [isRegeneratingEmail, setIsRegeneratingEmail] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
+  // Comparison data for Avant/Après
+  const [comparisonData, setComparisonData] = useState<{
+    cvData: CVData;
+    analysisResult: AnalysisResult;
+    strategies: Record<string, Strategy>;
+  } | null>(null);
 
   useEffect(() => {
     const storedApplicationId = localStorage.getItem("currentApplicationId");
@@ -57,7 +68,20 @@ export default function GeneratePage() {
 
   const checkExistingDocuments = async (appId: string) => {
     try {
-      const result = await getGeneratedDocuments(appId);
+      // Fetch documents and comparison data in parallel
+      const [result, comparisonResult] = await Promise.all([
+        getGeneratedDocuments(appId),
+        getComparisonData(appId),
+      ]);
+
+      // Set comparison data if available
+      if (comparisonResult.success && comparisonResult.cvData) {
+        setComparisonData({
+          cvData: comparisonResult.cvData,
+          analysisResult: comparisonResult.analysisResult!,
+          strategies: comparisonResult.strategies!,
+        });
+      }
 
       if (result.success && result.cvPdfBase64 && result.coverPdfBase64) {
         // Documents already exist
@@ -118,6 +142,11 @@ export default function GeneratePage() {
           setFollowUpEmail(result.followUpEmail);
         }
         toast.success("Documents générés avec succès !");
+        // Trigger celebration on first successful generation
+        if (!hasCelebrated.current) {
+          hasCelebrated.current = true;
+          setTimeout(() => celebrate("document_ready", "CV et lettre de motivation prêts !"), 500);
+        }
       } else if (result.partialSuccess) {
         // LaTeX generated but PDF compilation failed
         setPartialSuccess(true);
@@ -333,6 +362,22 @@ export default function GeneratePage() {
             onStartNew={handleStartNew}
           />
         </motion.div>
+
+        {/* Avant/Après Comparison */}
+        {!isGenerating && (cvPdfUrl || cvLatex) && comparisonData && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="mt-6"
+          >
+            <BeforeAfterComparison
+              cvData={comparisonData.cvData}
+              analysisResult={comparisonData.analysisResult}
+              strategies={comparisonData.strategies}
+            />
+          </motion.div>
+        )}
 
         {/* Tips */}
         {!isGenerating && (cvPdfUrl || cvLatex) && (

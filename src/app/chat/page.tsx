@@ -13,6 +13,7 @@ import {
   sendChatMessage,
   getChatState,
   skipAllGaps,
+  skipCurrentGap,
 } from "@/actions/chat-actions";
 import type { ChatMessage, GapAnalysis, Strategy, GapSlot } from "@/lib/types";
 
@@ -138,6 +139,33 @@ export default function ChatPage() {
     router.push("/generate");
   }, [router]);
 
+  // v3.0: Handle skip current gap
+  const handleSkipGap = useCallback(async () => {
+    if (!applicationId) return;
+
+    try {
+      const result = await skipCurrentGap(applicationId);
+      if (result.success) {
+        if (result.aiMessage) {
+          setMessages((prev) => [...prev, result.aiMessage!]);
+        }
+        if (result.newGapIndex !== undefined) {
+          setCurrentGapIndex(result.newGapIndex);
+        }
+        if (result.isComplete) {
+          setIsComplete(true);
+        }
+        toast.info("Gap passé - vous pourrez y revenir plus tard");
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Erreur lors du skip"
+      );
+    }
+  }, [applicationId]);
+
   // v3.0: Handle skip all gaps and go to generation
   const handleSkipAll = useCallback(async () => {
     if (!applicationId) return;
@@ -218,6 +246,7 @@ export default function ChatPage() {
           <ChatInterface
             messages={messages}
             onSendMessage={handleSendMessage}
+            onSkipGap={handleSkipGap}
             onSkipAll={handleSkipAll}
             isTyping={isTyping}
             gaps={gaps}

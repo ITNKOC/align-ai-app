@@ -82,6 +82,14 @@ export interface GapAnalysis {
   potentialTransferable: boolean; // If candidate might have transferable experience
 }
 
+// Problem → Solution match from job analysis
+export interface ProblemSolutionMatch {
+  implicitProblem: string;    // Problem detected in job offer
+  candidateProof: string;     // How candidate solved similar problem
+  relevanceScore: number;     // 1-10 how relevant
+  cvEvidence: string;         // Where in CV this was found
+}
+
 export interface AnalysisResult {
   score: number;
   gaps: GapAnalysis[];
@@ -96,6 +104,9 @@ export interface AnalysisResult {
     moderate: GapAnalysis[];
     minor: GapAnalysis[];
   };
+  // Problem → Solution matching (NEW)
+  problemSolutionMatches?: ProblemSolutionMatch[];
+  implicitProblemsDetected?: string[];
 }
 
 // ==================== SLOT FILLING SYSTEM ====================

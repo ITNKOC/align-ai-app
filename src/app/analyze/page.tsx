@@ -4,13 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { ArrowRight, Search, Sparkles, Target, Loader2, Link2 } from "lucide-react";
+import { ArrowRight, Search, Sparkles, Target, Loader2, Link2, Zap, FileText } from "lucide-react";
 import { AppNavbar } from "@/components/shared/app-navbar";
 import { PhaseIndicator } from "@/components/shared/phase-indicator";
 import { AnimatedCard } from "@/components/shared/animated-card";
 import { ScoreGauge } from "@/components/analysis/score-gauge";
-import { GapList, KeywordCloud } from "@/components/analysis/gap-list";
-import { analyzeJobOffer } from "@/actions/analysis-actions";
+import { GapList, KeywordCloud, MatchedSkillsList, ProblemSolutionList } from "@/components/analysis/gap-list";
+import { AnalysisLoading } from "@/components/shared/educational-loading";
+import { analyzeJobOffer, checkAutoResolvableGaps, type AutoResolutionPreview } from "@/actions/analysis-actions";
 import type { AnalysisResult } from "@/lib/types";
 
 export default function AnalyzePage() {
@@ -23,6 +24,7 @@ export default function AnalyzePage() {
     null
   );
   const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [autoResolution, setAutoResolution] = useState<AutoResolutionPreview | null>(null);
 
   useEffect(() => {
     const storedProfileId = localStorage.getItem("currentProfileId");
@@ -49,6 +51,21 @@ export default function AnalyzePage() {
         setAnalysisResult(result.analysisResult);
         setApplicationId(result.applicationId || null);
         localStorage.setItem("currentApplicationId", result.applicationId || "");
+
+        // Check for auto-resolvable gaps (learned from previous applications)
+        if (result.analysisResult.gaps.length > 0) {
+          const autoResult = await checkAutoResolvableGaps(result.analysisResult.gaps);
+          if (autoResult.success && autoResult.data) {
+            setAutoResolution(autoResult.data);
+            if (autoResult.data.autoResolvableCount > 0) {
+              toast.success(
+                `${autoResult.data.autoResolvableCount} gap(s) auto-résolu(s) !`,
+                { description: "Grâce à vos candidatures précédentes" }
+              );
+            }
+          }
+        }
+
         toast.success("Analyse terminée !");
       } else {
         throw new Error(result.error || "Échec de l'analyse");
@@ -204,12 +221,12 @@ Competences requises:
                     </div>
                   </div>
 
-                  <p className="text-lg font-semibold text-white mb-1">
+                  <p className="text-lg font-semibold text-white mb-4">
                     Analyse en cours...
                   </p>
-                  <p className="text-sm text-white/50">
-                    Comparaison avec votre profil
-                  </p>
+
+                  {/* Educational loading tips */}
+                  <AnalysisLoading isVisible={true} />
                 </div>
               </div>
             )}
@@ -219,7 +236,7 @@ Competences requises:
                 {/* Score */}
                 <AnimatedCard className="card-modern flex flex-col items-center p-6 md:p-8">
                   <h2 className="mb-4 text-lg font-semibold text-white">
-                    Score de compatibilite
+                    Score de compatibilité
                   </h2>
                   <ScoreGauge score={analysisResult.score} />
 
@@ -237,13 +254,42 @@ Competences requises:
                   )}
                 </AnimatedCard>
 
-                {/* Gaps */}
-                <AnimatedCard delay={0.1} className="card-modern p-5">
-                  <GapList gaps={analysisResult.gaps} />
-                </AnimatedCard>
+                {/* MATCHES FIRST - Positive framing */}
+                {analysisResult.matchedSkills.length > 0 && (
+                  <AnimatedCard delay={0.1} className="card-modern p-5">
+                    <MatchedSkillsList
+                      matchedSkills={analysisResult.matchedSkills}
+                      totalKeywords={analysisResult.keywords.length}
+                      score={analysisResult.score}
+                    />
+                  </AnimatedCard>
+                )}
+
+                {/* Problem → Solution matches - Shows proven problem-solving */}
+                {analysisResult.problemSolutionMatches && analysisResult.problemSolutionMatches.length > 0 && (
+                  <AnimatedCard delay={0.15} className="card-modern p-5">
+                    <ProblemSolutionList
+                      matches={analysisResult.problemSolutionMatches}
+                    />
+                  </AnimatedCard>
+                )}
+
+                {/* Gaps AFTER matches - Reframed positively */}
+                {analysisResult.gaps.length > 0 && (
+                  <AnimatedCard delay={0.25} className="card-modern p-5">
+                    <GapList
+                      gaps={analysisResult.gaps}
+                      autoResolvedSkills={
+                        autoResolution
+                          ? new Set(autoResolution.autoResolvableGaps.map(g => g.skill))
+                          : undefined
+                      }
+                    />
+                  </AnimatedCard>
+                )}
 
                 {/* Keywords */}
-                <AnimatedCard delay={0.2} className="card-modern p-5">
+                <AnimatedCard delay={0.3} className="card-modern p-5">
                   <KeywordCloud
                     keywords={analysisResult.keywords}
                     matchedSkills={analysisResult.matchedSkills}
@@ -254,18 +300,62 @@ Competences requises:
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
+                  transition={{ delay: 0.4 }}
+                  className="space-y-3"
                 >
+                  {/* 1-Click Mode - when all gaps are auto-resolvable */}
+                  {autoResolution?.canUseOneClickMode && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.4 }}
+                      className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap className="w-5 h-5 text-emerald-400" />
+                        <span className="font-semibold text-emerald-300">Mode 1-Click disponible</span>
+                      </div>
+                      <p className="text-sm text-white/60 mb-3">
+                        {autoResolution.autoResolvableCount === autoResolution.totalGaps
+                          ? "Tous vos gaps sont déjà résolus grâce à vos candidatures précédentes !"
+                          : "Seuls des gaps mineurs restent. Vous pouvez générer directement vos documents."}
+                      </p>
+                      <button
+                        onClick={() => router.push("/generate")}
+                        className="btn-primary w-full py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500"
+                      >
+                        <FileText className="w-5 h-5" />
+                        Générer directement
+                        <Zap className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                  )}
+
+                  {/* Regular continue button */}
                   <button
                     onClick={handleContinue}
-                    className="btn-primary w-full py-3"
+                    className={`btn-primary w-full py-3 ${
+                      autoResolution?.canUseOneClickMode ? "btn-secondary" : ""
+                    }`}
                   >
-                    Continuer vers le chat
-                    <ArrowRight className="w-5 h-5" />
+                    {autoResolution?.canUseOneClickMode ? (
+                      <>
+                        Ou continuer vers le chat
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    ) : (
+                      <>
+                        Continuer vers le chat
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
                   </button>
-                  <p className="mt-3 text-center text-xs text-white/50">
-                    Explorez vos competences pour combler les gaps identifies
-                  </p>
+
+                  {!autoResolution?.canUseOneClickMode && (
+                    <p className="text-center text-xs text-white/50">
+                      Explorez vos competences pour combler les gaps identifies
+                    </p>
+                  )}
                 </motion.div>
               </>
             )}
