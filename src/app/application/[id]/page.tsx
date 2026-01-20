@@ -24,8 +24,13 @@ import {
   Copy,
   Link2,
   MessageSquare,
+  ScrollText,
 } from "lucide-react";
+import { JobOfferView } from "@/components/application/JobOfferView";
+import { InterviewTypeModal, type InterviewType } from "@/components/application/InterviewTypeModal";
+import { InterviewPrepProgress } from "@/components/application/InterviewPrepProgress";
 import { getSession } from "@/actions/auth-actions";
+import { startInterviewPrepGeneration, type PrepStatus } from "@/actions/interview-prep-actions";
 import {
   getApplicationDetail,
   updateApplicationStatus,
@@ -59,8 +64,9 @@ export default function ApplicationDetailPage({
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [applyData, setApplyData] = useState({ via: "email", jobUrl: "" });
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"cv" | "cover" | "email">("cv");
+  const [activeTab, setActiveTab] = useState<"cv" | "cover" | "email" | "offer">("cv");
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showInterviewModal, setShowInterviewModal] = useState(false);
   const [newStatus, setNewStatus] = useState<ApplicationStatus>("applied");
   const [notes, setNotes] = useState("");
 
@@ -123,11 +129,32 @@ export default function ApplicationDetailPage({
     if (result.success) {
       toast.success("Statut mis à jour !");
       setShowStatusModal(false);
+
+      // Check if we should show the interview modal (AC1)
+      if (result.showInterviewModal) {
+        setShowInterviewModal(true);
+      }
+
       loadApplication();
     } else {
       toast.error(result.error);
     }
     setIsSaving(false);
+  };
+
+  // Handle interview prep generation (AC2)
+  const handleInterviewPrepConfirm = async (type: InterviewType, date?: Date) => {
+    if (!application) return;
+
+    const result = await startInterviewPrepGeneration(application.id, type, date);
+
+    if (result.success) {
+      toast.success("Generation de la preparation lancee !");
+      setShowInterviewModal(false);
+      loadApplication(); // Refresh to show progress
+    } else {
+      toast.error(result.error || "Erreur lors du demarrage");
+    }
   };
 
   const handleRecordFollowUp = async () => {
@@ -302,6 +329,23 @@ export default function ApplicationDetailPage({
               </Link>
             )}
           </div>
+
+          {/* Interview Prep Progress (AC3 - shows when interview scheduled) */}
+          {(application.status === "interview_scheduled" ||
+            application.status === "interview_done") &&
+            application.interviewPrepStatus &&
+            application.interviewPrepStatus !== "pending" && (
+              <div className="mt-6 pt-6 border-t border-white/10">
+                <h3 className="text-sm font-medium text-white/70 mb-3">
+                  Preparation a l&apos;entretien
+                </h3>
+                <InterviewPrepProgress
+                  applicationId={application.id}
+                  initialStatus={application.interviewPrepStatus as PrepStatus}
+                  onStatusChange={() => loadApplication()}
+                />
+              </div>
+            )}
         </motion.div>
 
         {/* Score & Gap Analysis */}
@@ -354,7 +398,8 @@ export default function ApplicationDetailPage({
         {/* Documents */}
         {(application.cvPdfBase64 ||
           application.coverPdfBase64 ||
-          application.followUpEmail) && (
+          application.followUpEmail ||
+          application.jobDescription) && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -397,6 +442,19 @@ export default function ApplicationDetailPage({
                   }`}
                 >
                   Email de relance
+                </button>
+              )}
+              {application.jobDescription && (
+                <button
+                  onClick={() => setActiveTab("offer")}
+                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                    activeTab === "offer"
+                      ? "text-white border-b-2 border-indigo-500"
+                      : "text-white/60 hover:text-white"
+                  }`}
+                >
+                  <ScrollText className="h-4 w-4" />
+                  Offre originale
                 </button>
               )}
             </div>
@@ -473,6 +531,15 @@ export default function ApplicationDetailPage({
                     Copier l&apos;email
                   </button>
                 </div>
+              )}
+
+              {activeTab === "offer" && application.jobDescription && (
+                <JobOfferView
+                  title={application.jobTitle}
+                  company={application.company}
+                  description={application.jobDescription}
+                  gaps={application.gaps}
+                />
               )}
             </div>
           </motion.div>
@@ -663,6 +730,13 @@ export default function ApplicationDetailPage({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Interview Type Modal (AC1, AC2) */}
+      <InterviewTypeModal
+        isOpen={showInterviewModal}
+        onClose={() => setShowInterviewModal(false)}
+        onConfirm={handleInterviewPrepConfirm}
+      />
     </div>
   );
 }

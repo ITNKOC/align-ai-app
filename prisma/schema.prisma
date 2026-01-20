@@ -112,8 +112,14 @@ model Application {
 
   // Interview tracking
   interviewDate   DateTime?
-  interviewType   String?                // "phone", "video", "onsite", "technical"
+  interviewType   String?                // "technical" | "hr" | "manager"
   interviewNotes  String?  @db.Text
+
+  // Interview Prep Document (Epic 7)
+  interviewPrepStatus String?  @default("pending") // "pending" | "generating" | "ready" | "failed"
+  interviewPrepPdf    Bytes?                       // Generated PDF
+  interviewPrepLatex  String?  @db.Text            // Generated LaTeX source
+  interviewPrepError  String?                      // Error message if failed
 
   // Response tracking
   responseDate    DateTime?

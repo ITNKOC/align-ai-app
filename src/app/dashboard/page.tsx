@@ -1,10 +1,46 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion, useSpring, useTransform, useInView } from "framer-motion";
 import { toast } from "sonner";
+import {
+  staggerContainer,
+  staggerItem,
+  dashboardHero,
+  statsCardHover,
+  cardHover,
+  buttonHover,
+  iconHover,
+  skeletonPulse,
+} from "@/lib/animations";
+
+// Animated counter component for stats
+function AnimatedCounter({ value, className }: { value: number; className?: string }) {
+  const prefersReducedMotion = useReducedMotion();
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
+
+  const spring = useSpring(0, { stiffness: 100, damping: 30 });
+  const display = useTransform(spring, (current) => Math.round(current));
+
+  useEffect(() => {
+    if (isInView && !prefersReducedMotion) {
+      spring.set(value);
+    }
+  }, [spring, value, isInView, prefersReducedMotion]);
+
+  if (prefersReducedMotion) {
+    return <span className={className}>{value}</span>;
+  }
+
+  return (
+    <motion.span ref={ref} className={className}>
+      {display}
+    </motion.span>
+  );
+}
 import {
   Briefcase,
   Plus,
@@ -42,11 +78,15 @@ import {
   getApplications,
   getDashboardStats,
   getFollowUpReminders,
+  getRecentActivity,
   deleteApplication,
   type DashboardApplication,
   type DashboardStats,
   type ApplicationStatus,
+  type ActivityItem,
 } from "@/actions/dashboard-actions";
+import { ConversionFunnel } from "@/components/dashboard/ConversionFunnel";
+import { ActivityTimeline } from "@/components/dashboard/ActivityTimeline";
 
 // Status configuration with icons
 const statusConfig: Record<
@@ -70,9 +110,11 @@ const DAILY_GOAL = 20;
 
 export default function DashboardPage() {
   const router = useRouter();
+  const prefersReducedMotion = useReducedMotion();
   const [applications, setApplications] = useState<DashboardApplication[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [reminders, setReminders] = useState<{ id: string; jobTitle: string | null; company: string | null }[]>([]);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all">("all");
@@ -85,10 +127,11 @@ export default function DashboardPage() {
 
   const loadData = async () => {
     try {
-      const [appsResult, statsResult, remindersResult] = await Promise.all([
+      const [appsResult, statsResult, remindersResult, activitiesResult] = await Promise.all([
         getApplications(),
         getDashboardStats(),
         getFollowUpReminders(),
+        getRecentActivity(),
       ]);
 
       if (appsResult.success && appsResult.applications) {
@@ -99,6 +142,9 @@ export default function DashboardPage() {
       }
       if (remindersResult.success && remindersResult.reminders) {
         setReminders(remindersResult.reminders);
+      }
+      if (activitiesResult.success && activitiesResult.activities) {
+        setActivities(activitiesResult.activities);
       }
     } catch {
       toast.error("Erreur lors du chargement");
@@ -141,27 +187,38 @@ export default function DashboardPage() {
 
   const dailyProgress = Math.min((todayCreated / DAILY_GOAL) * 100, 100);
 
-  // Filter applications based on tab
-  const getFilteredByTab = (apps: DashboardApplication[]) => {
-    switch (activeTab) {
-      case "in_progress":
-        return apps.filter(a => ["analyzing", "chatting", "strategies_complete", "documents_ready"].includes(a.status));
-      case "applied":
-        return apps.filter(a => ["applied", "interview_scheduled", "interview_done"].includes(a.status));
-      case "completed":
-        return apps.filter(a => ["offer_received", "accepted", "rejected", "withdrawn"].includes(a.status));
-      default:
-        return apps;
-    }
-  };
+  // Memoized tab counts - only recalculate when applications change
+  const tabCounts = useMemo(() => ({
+    all: applications.length,
+    in_progress: applications.filter(a => ["analyzing", "chatting", "strategies_complete", "documents_ready"].includes(a.status)).length,
+    applied: applications.filter(a => ["applied", "interview_scheduled", "interview_done"].includes(a.status)).length,
+    completed: applications.filter(a => ["offer_received", "accepted", "rejected", "withdrawn"].includes(a.status)).length,
+  }), [applications]);
 
-  const filteredApplications = getFilteredByTab(applications).filter((app) => {
-    const matchesSearch =
-      !searchQuery ||
-      app.jobTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.company?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  // Memoized filtered applications - only recalculate when dependencies change
+  const filteredApplications = useMemo(() => {
+    let filtered = applications;
+
+    // Filter by tab
+    if (activeTab === "in_progress") {
+      filtered = filtered.filter(a => ["analyzing", "chatting", "strategies_complete", "documents_ready"].includes(a.status));
+    } else if (activeTab === "applied") {
+      filtered = filtered.filter(a => ["applied", "interview_scheduled", "interview_done"].includes(a.status));
+    } else if (activeTab === "completed") {
+      filtered = filtered.filter(a => ["offer_received", "accepted", "rejected", "withdrawn"].includes(a.status));
+    }
+
+    // Filter by search
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(app =>
+        app.jobTitle?.toLowerCase().includes(query) ||
+        app.company?.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [applications, activeTab, searchQuery]);
 
   const getScoreClass = (score: number | null) => {
     if (score === null) return "";
@@ -195,14 +252,54 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="relative">
-            <div className="w-16 h-16 rounded-full border-4 border-indigo-500/20" />
-            <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
+      <div className="min-h-screen pb-24 md:pb-8">
+        <AppNavbar />
+        <main className="container-app py-6">
+          {/* Skeleton Hero */}
+          <motion.div
+            variants={skeletonPulse}
+            animate="animate"
+            className="h-40 rounded-2xl bg-white/[0.03] border border-white/10 mb-6"
+          />
+
+          {/* Skeleton Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            {[...Array(4)].map((_, i) => (
+              <motion.div
+                key={i}
+                variants={skeletonPulse}
+                animate="animate"
+                className="h-20 rounded-xl bg-white/[0.03] border border-white/10"
+              />
+            ))}
           </div>
-          <p className="text-sm text-white/50 mt-2">Chargement de vos candidatures...</p>
-        </div>
+
+          {/* Skeleton Tabs */}
+          <motion.div
+            variants={skeletonPulse}
+            animate="animate"
+            className="h-12 rounded-xl bg-white/[0.03] border border-white/10 mb-4"
+          />
+
+          {/* Skeleton Search */}
+          <motion.div
+            variants={skeletonPulse}
+            animate="animate"
+            className="h-11 rounded-xl bg-white/[0.03] border border-white/10 mb-6"
+          />
+
+          {/* Skeleton Application Cards */}
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <motion.div
+                key={i}
+                variants={skeletonPulse}
+                animate="animate"
+                className="h-24 rounded-xl bg-white/[0.03] border border-white/10"
+              />
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
@@ -214,8 +311,9 @@ export default function DashboardPage() {
       <main className="container-app py-6">
         {/* Hero Section - Daily Goal */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          variants={prefersReducedMotion ? undefined : dashboardHero}
+          initial="initial"
+          animate="animate"
           className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600/20 via-purple-600/10 to-transparent border border-white/10 p-6 mb-6"
         >
           {/* Background decoration */}
@@ -281,11 +379,12 @@ export default function DashboardPage() {
               {/* Quick action */}
               <Link href="/upload">
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold shadow-lg shadow-indigo-500/25"
+                  {...(prefersReducedMotion ? {} : buttonHover)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-shadow"
                 >
-                  <Plus className="w-5 h-5" />
+                  <motion.span {...(prefersReducedMotion ? {} : iconHover)}>
+                    <Plus className="w-5 h-5" />
+                  </motion.span>
                   <span className="hidden sm:inline">Nouvelle candidature</span>
                   <span className="sm:hidden">Nouveau</span>
                 </motion.button>
@@ -295,74 +394,122 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <motion.div
+          variants={prefersReducedMotion ? undefined : staggerContainer(0.08)}
+          initial="initial"
+          animate="animate"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6"
+        >
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-indigo-500/30 transition-colors"
+            variants={prefersReducedMotion ? undefined : staggerItem}
+            {...(prefersReducedMotion ? {} : statsCardHover)}
+            className="p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-indigo-500/30 transition-colors cursor-default"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+              <motion.div
+                {...(prefersReducedMotion ? {} : iconHover)}
+                className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center"
+              >
                 <Briefcase className="w-5 h-5 text-indigo-400" />
-              </div>
+              </motion.div>
               <div>
-                <p className="text-2xl font-bold text-white">{stats?.totalApplications || 0}</p>
+                <p className="text-2xl font-bold text-white">
+                  <AnimatedCounter value={stats?.totalApplications || 0} />
+                </p>
                 <p className="text-xs text-white/50">Total</p>
               </div>
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-amber-500/30 transition-colors"
+            variants={prefersReducedMotion ? undefined : staggerItem}
+            {...(prefersReducedMotion ? {} : statsCardHover)}
+            className="p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-amber-500/30 transition-colors cursor-default"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+              <motion.div
+                {...(prefersReducedMotion ? {} : iconHover)}
+                className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center"
+              >
                 <Clock className="w-5 h-5 text-amber-400" />
-              </div>
+              </motion.div>
               <div>
-                <p className="text-2xl font-bold text-white">{stats?.pendingApplications || 0}</p>
+                <p className="text-2xl font-bold text-white">
+                  <AnimatedCounter value={stats?.pendingApplications || 0} />
+                </p>
                 <p className="text-xs text-white/50">En attente</p>
               </div>
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-cyan-500/30 transition-colors"
+            variants={prefersReducedMotion ? undefined : staggerItem}
+            {...(prefersReducedMotion ? {} : statsCardHover)}
+            className="p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-cyan-500/30 transition-colors cursor-default"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+              <motion.div
+                {...(prefersReducedMotion ? {} : iconHover)}
+                className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center"
+              >
                 <Users className="w-5 h-5 text-cyan-400" />
-              </div>
+              </motion.div>
               <div>
-                <p className="text-2xl font-bold text-white">{stats?.interviewsScheduled || 0}</p>
+                <p className="text-2xl font-bold text-white">
+                  <AnimatedCounter value={stats?.interviewsScheduled || 0} />
+                </p>
                 <p className="text-xs text-white/50">Entretiens</p>
               </div>
             </div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-emerald-500/30 transition-colors"
+            variants={prefersReducedMotion ? undefined : staggerItem}
+            {...(prefersReducedMotion ? {} : statsCardHover)}
+            className="p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-emerald-500/30 transition-colors cursor-default"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+              <motion.div
+                {...(prefersReducedMotion ? {} : iconHover)}
+                className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center"
+              >
                 <Trophy className="w-5 h-5 text-emerald-400" />
-              </div>
+              </motion.div>
               <div>
-                <p className="text-2xl font-bold text-white">{stats?.offersReceived || 0}</p>
+                <p className="text-2xl font-bold text-white">
+                  <AnimatedCounter value={stats?.offersReceived || 0} />
+                </p>
                 <p className="text-xs text-white/50">Offres</p>
               </div>
             </div>
           </motion.div>
+        </motion.div>
+
+        {/* Conversion Funnel & Activity Timeline */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <ConversionFunnel
+            stats={{
+              total: stats?.totalApplications || 0,
+              applied: stats?.statusBreakdown
+                ? stats.statusBreakdown.applied +
+                  stats.statusBreakdown.interview_scheduled +
+                  stats.statusBreakdown.interview_done +
+                  stats.statusBreakdown.offer_received +
+                  stats.statusBreakdown.accepted +
+                  stats.statusBreakdown.rejected
+                : 0,
+              interviews: stats?.interviewsScheduled || 0,
+              offers: stats?.offersReceived || 0,
+            }}
+            conversionRates={
+              stats?.conversionRates || {
+                appliedToInterview: 0,
+                interviewToOffer: 0,
+                overallSuccess: 0,
+              }
+            }
+          />
+          <ActivityTimeline activities={activities} />
         </div>
 
         {/* Follow-up Reminders */}
@@ -406,25 +553,25 @@ export default function DashboardPage() {
 
         {/* Tabs & Search */}
         <div className="flex flex-col gap-4 mb-6">
-          {/* Tabs */}
+          {/* Tabs - optimized with memoized counts */}
           <div className="flex gap-1 p-1 bg-white/[0.03] rounded-xl overflow-x-auto">
             {[
-              { id: "all", label: "Toutes", count: applications.length },
-              { id: "in_progress", label: "En cours", count: applications.filter(a => ["analyzing", "chatting", "strategies_complete", "documents_ready"].includes(a.status)).length },
-              { id: "applied", label: "Postulees", count: applications.filter(a => ["applied", "interview_scheduled", "interview_done"].includes(a.status)).length },
-              { id: "completed", label: "Terminees", count: applications.filter(a => ["offer_received", "accepted", "rejected", "withdrawn"].includes(a.status)).length },
+              { id: "all" as const, label: "Toutes", count: tabCounts.all },
+              { id: "in_progress" as const, label: "En cours", count: tabCounts.in_progress },
+              { id: "applied" as const, label: "Postulees", count: tabCounts.applied },
+              { id: "completed" as const, label: "Terminees", count: tabCounts.completed },
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex-1 min-w-[80px] px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative flex-1 min-w-[80px] px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap ${
                   activeTab === tab.id
-                    ? "bg-indigo-500/20 text-indigo-300"
-                    : "text-white/50 hover:text-white/80"
+                    ? "text-indigo-300 bg-indigo-500/20"
+                    : "text-white/50 hover:text-white/80 hover:bg-white/[0.02]"
                 }`}
               >
                 {tab.label}
-                <span className={`ml-1.5 px-1.5 py-0.5 rounded text-xs ${
+                <span className={`ml-1.5 px-1.5 py-0.5 rounded text-xs transition-colors duration-150 ${
                   activeTab === tab.id ? "bg-indigo-500/30" : "bg-white/10"
                 }`}>
                   {tab.count}
@@ -446,47 +593,35 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Applications List */}
+        {/* Applications List - optimized with CSS transitions */}
         <div className="space-y-3">
-          <AnimatePresence mode="popLayout">
-            {filteredApplications.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex flex-col items-center justify-center py-16 text-center"
-              >
-                <div className="w-20 h-20 rounded-2xl bg-white/[0.03] flex items-center justify-center mb-4">
-                  <Briefcase className="w-10 h-10 text-white/20" />
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2">
-                  {searchQuery ? "Aucun resultat" : "Aucune candidature"}
-                </h3>
-                <p className="text-sm text-white/50 max-w-sm mb-6">
-                  {searchQuery
-                    ? "Essayez avec d'autres mots-cles"
-                    : "Commencez par creer votre premiere candidature pour atteindre votre objectif quotidien"
-                  }
-                </p>
-                {!searchQuery && (
-                  <Link href="/upload">
-                    <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold">
-                      <Sparkles className="w-5 h-5" />
-                      Creer ma premiere candidature
-                    </button>
-                  </Link>
-                )}
-              </motion.div>
-            ) : (
-              filteredApplications.map((app, index) => (
-                <motion.div
-                  key={app.id}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ delay: index * 0.03 }}
-                >
-                  <Link href={`/application/${app.id}`}>
-                    <div className="group p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-indigo-500/30 transition-all">
+          {filteredApplications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-20 h-20 rounded-2xl bg-white/[0.03] flex items-center justify-center mb-4">
+                <Briefcase className="w-10 h-10 text-white/20" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                {searchQuery ? "Aucun resultat" : "Aucune candidature"}
+              </h3>
+              <p className="text-sm text-white/50 max-w-sm mb-6">
+                {searchQuery
+                  ? "Essayez avec d'autres mots-cles"
+                  : "Commencez par creer votre premiere candidature pour atteindre votre objectif quotidien"
+                }
+              </p>
+              {!searchQuery && (
+                <Link href="/upload">
+                  <button className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold hover:opacity-90 transition-opacity">
+                    <Sparkles className="w-5 h-5" />
+                    Creer ma premiere candidature
+                  </button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            filteredApplications.map((app) => (
+              <Link key={app.id} href={`/application/${app.id}`}>
+                <div className="group p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-indigo-500/30 transition-all duration-150 hover:-translate-y-0.5">
                       <div className="flex items-start gap-4">
                         {/* Company icon with score */}
                         <div className="relative flex-shrink-0">
@@ -562,16 +697,17 @@ export default function DashboardPage() {
                         {/* Actions */}
                         <div className="flex flex-col gap-1">
                           {app.jobUrl && (
-                            <a
-                              href={app.jobUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.open(app.jobUrl!, "_blank", "noopener,noreferrer");
+                              }}
                               className="w-8 h-8 rounded-lg flex items-center justify-center text-white/30 hover:text-white hover:bg-white/10 transition-colors"
                               title="Voir l'offre"
                             >
                               <ExternalLink className="w-4 h-4" />
-                            </a>
+                            </button>
                           )}
                           <button
                             onClick={(e) => handleDelete(e, app.id)}
@@ -588,19 +724,16 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </div>
-                  </Link>
-                </motion.div>
-              ))
-            )}
-          </AnimatePresence>
+              </Link>
+            ))
+          )}
         </div>
 
         {/* Floating CTA for mobile */}
         <div className="fixed bottom-20 right-4 md:hidden z-40">
           <Link href="/upload">
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              {...(prefersReducedMotion ? {} : buttonHover)}
               className="w-14 h-14 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/30 flex items-center justify-center"
             >
               <Plus className="w-6 h-6" />

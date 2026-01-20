@@ -447,3 +447,92 @@ export const gaugeLabel: Variants = {
     transition: { delay: 0.7, duration: DURATION.normal },
   },
 };
+
+// ============================================================================
+// DASHBOARD SPECIFIC ANIMATIONS
+// ============================================================================
+
+export const dashboardHero: Variants = {
+  initial: { opacity: 0, y: 30, scale: 0.98 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: DURATION.slow, ease: EASE.smooth },
+  },
+};
+
+export const statsCardHover = {
+  whileHover: {
+    y: -4,
+    scale: 1.02,
+    boxShadow: "0 10px 30px rgba(99, 102, 241, 0.15)",
+    transition: { duration: 0.2 },
+  },
+  whileTap: { scale: 0.98 },
+};
+
+export const progressBarFill = (percentage: number): Variants => ({
+  initial: { scaleX: 0, originX: 0 },
+  animate: {
+    scaleX: percentage / 100,
+    originX: 0,
+    transition: { duration: 1, ease: EASE.smooth, delay: 0.3 },
+  },
+});
+
+export const tabSwitchContainer: Variants = {
+  initial: { opacity: 0 },
+  animate: {
+    opacity: 1,
+    transition: { duration: DURATION.fast },
+  },
+  exit: {
+    opacity: 0,
+    transition: { duration: DURATION.fast },
+  },
+};
+
+export const numberCounter = {
+  initial: { opacity: 0, scale: 0.5 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    transition: { type: "spring", stiffness: 200, damping: 20 },
+  },
+};
+
+export const toastSlideIn: Variants = {
+  initial: { opacity: 0, y: 50, scale: 0.95 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: DURATION.normal, ease: EASE.smooth },
+  },
+  exit: {
+    opacity: 0,
+    y: 20,
+    scale: 0.95,
+    transition: { duration: DURATION.fast },
+  },
+};
+
+export const skeletonPulse: Variants = {
+  animate: {
+    opacity: [0.5, 1, 0.5],
+    transition: {
+      repeat: Infinity,
+      duration: 1.5,
+      ease: "easeInOut",
+    },
+  },
+};
+
+export const iconHover = {
+  whileHover: {
+    rotate: 15,
+    scale: 1.1,
+    transition: { duration: DURATION.fast },
+  },
+};
