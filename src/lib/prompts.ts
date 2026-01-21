@@ -884,13 +884,13 @@ ${languageBlock}
 - Expériences: "Développé une API avec \\textbf{Node.js} et \\textbf{PostgreSQL}"
 - Projets: "[Projet] -- \\textbf{React}, \\textbf{TypeScript}, MongoDB"
 
-**POUR TENIR EN 1 PAGE (OBLIGATOIRE):**
-- Police 10pt, marges réduites (0.8cm top/bottom, 1.2cm left/right)
-- Seulement 2-3 expériences (les plus pertinentes pour l'offre)
-- Maximum 1-2 projets pertinents
+**POUR TENIR EN 1-2 PAGES (RESPIRANT):**
+- Police 10-11pt, marges confortables (1.5cm top/bottom, 2cm left/right)
+- 3-4 expériences les plus pertinentes pour l'offre
+- **MINIMUM 3 PROJETS** si le candidat en a suffisamment
 - Pas de section "Centres d'intérêt"
-- Descriptions courtes: 1-2 lignes max par bullet point
-- Pas de profil/résumé si ça ne tient pas
+- Descriptions courtes mais complètes: 1-2 lignes par bullet point
+- Garder le CV aéré et lisible, pas collé
 
 ${keywordSynonyms}
 
@@ -1038,7 +1038,7 @@ Structure optimisée:
 \\usepackage[utf8]{inputenc}
 \\usepackage[T1]{fontenc}
 \\usepackage[french]{babel}
-\\usepackage[top=1.5cm,bottom=1.5cm,left=2cm,right=2cm]{geometry}
+\\usepackage[top=2cm,bottom=2cm,left=2cm,right=2cm]{geometry}
 \\usepackage{enumitem}
 \\usepackage{titlesec}
 \\usepackage{hyperref}
@@ -1098,15 +1098,19 @@ Structure optimisée:
 % Expertise démontrée en \\keyword{LLM}, \\keyword{RAG}, et \\keyword{Python} à travers le développement de plateformes IA en production.
 % Passionné par l'innovation Cloud, je recherche un environnement R\\&D stimulant pour créer les services IA de demain.
 
-% ===== COMPÉTENCES CLÉS (SCAN RAPIDE) =====
+% ===== COMPÉTENCES CLÉS (TOUTES LES COMPÉTENCES DU CANDIDAT) =====
+% RÈGLE IMPORTANTE: Inclure TOUTES les compétences du candidat, pas seulement celles de l'offre
+% Les compétences qui matchent l'offre sont mises en \\keyword{} (gras) et listées EN PREMIER dans chaque catégorie
 \\section{Competences Techniques}
 \\begin{itemize}[leftmargin=*, itemsep=1pt, parsep=0pt]
-  \\item \\keyword{[Domaine 1 offre]:} \\keyword{[Skill 1]}, \\keyword{[Skill 2]}, [Skill 3], [Skill 4]
-  \\item \\keyword{[Domaine 2 offre]:} \\keyword{[Skill 1]}, [Skill 2], [Skill 3]
-  \\item \\keyword{[Domaine 3 offre]:} \\keyword{[Skill 1]}, [Skill 2], [Skill 3]
-  \\item \\textbf{Outils \\& DevOps:} \\keyword{[Outil offre]}, Git, Docker, CI/CD
-  \\item \\textbf{Méthodologies:} Agile/Scrum, [Autres]
+  \\item \\textbf{Langages:} \\keyword{[Skill offre 1]}, \\keyword{[Skill offre 2]}, [Autres skills du candidat...]
+  \\item \\textbf{Frameworks:} \\keyword{[Framework offre]}, [Autres frameworks du candidat...]
+  \\item \\textbf{IA \\& Data:} \\keyword{[Si pertinent pour offre]}, [Autres compétences data du candidat...]
+  \\item \\textbf{Outils \\& DevOps:} \\keyword{[Outil offre]}, [Autres outils du candidat...]
+  \\item \\textbf{Méthodologies:} [Compétences méthodologiques du candidat]
 \\end{itemize}
+% NOTE: Chaque catégorie doit inclure TOUTES les compétences du candidat dans cette catégorie,
+% avec les skills qui matchent l'offre EN PREMIER et en \\keyword{}
 
 % ===== EXPÉRIENCE PROFESSIONNELLE =====
 \\section{Experience Professionnelle}
@@ -1131,7 +1135,7 @@ Structure optimisée:
 
 \\vspace{6pt}
 
-% 2-3 projets pertinents max
+% MINIMUM 3 PROJETS si le candidat en a - répéter le bloc ci-dessus
 
 % ===== FORMATION =====
 \\section{Formation}
@@ -1219,10 +1223,12 @@ Le recruteur passe 6 SECONDES à scanner un CV. Il cherche des RAISONS DE REJETE
 Notre objectif: ZÉRO raison de rejet + réponse immédiate à "Pourquoi ce candidat?"
 
 ### RÈGLES STRUCTURELLES
-1. ⚠️ **2 PAGES MAXIMUM** - Si ça dépasse, COUPE les expériences/projets les moins pertinents
+1. ⚠️ **1-2 PAGES** - Le CV doit être aéré et respirable, pas collé
 2. ⚠️ **NOIR ET BLANC** - Aucune \\color{} sauf pour définitions internes, pas de texte coloré
 3. ⚠️ **SECTION "POURQUOI MOI" EN PREMIER** - C'est LA section critique des 6 secondes
 4. ⚠️ **ICONES FONTAWESOME5** - \\faPhone, \\faEnvelope, \\faMapMarker*, \\faLinkedin, \\faGithub, \\faGlobe
+5. ⚠️ **MINIMUM 3 PROJETS** - Si le candidat a 3+ projets, les inclure tous (priorité aux pertinents)
+6. ⚠️ **TOUTES LES COMPÉTENCES** - Inclure TOUTES les compétences du candidat, pas seulement celles de l'offre. Les skills matchant l'offre en \\keyword{} ET listés en premier
 
 ### RÈGLES "POURQUOI MOI" (CRITIQUE)
 5. ⚠️ **3 PHRASES MAX** - Accroche + Match (3-4 skills clés) + Valeur unique

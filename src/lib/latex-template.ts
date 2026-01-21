@@ -225,6 +225,7 @@ ${escapeLatexPreserveCommands(content)}
 
 /**
  * Build the skills section LaTeX
+ * Uses ALL user skills, with matched skills prioritized first and highlighted
  */
 export function buildSkillsSection(
   skillsByCategory: Record<string, string[]>,
@@ -234,15 +235,30 @@ export function buildSkillsSection(
   const header = SECTION_HEADERS[language].skills;
   const matchedSet = new Set(matchedSkills.map(s => s.toLowerCase()));
 
+  // Helper to check if a skill matches
+  const isSkillMatched = (skill: string): boolean => {
+    const skillLower = skill.toLowerCase();
+    return matchedSet.has(skillLower) ||
+      matchedSkills.some(m => skillLower.includes(m.toLowerCase()) || m.toLowerCase().includes(skillLower));
+  };
+
   const lines: string[] = [`\\section{${header}}`];
   lines.push("\\begin{itemize}[leftmargin=*, itemsep=1pt, parsep=0pt]");
 
   for (const [category, skills] of Object.entries(skillsByCategory)) {
     if (skills.length === 0) continue;
 
-    const formattedSkills = skills.map(skill => {
-      const isMatched = matchedSet.has(skill.toLowerCase()) ||
-        matchedSkills.some(m => skill.toLowerCase().includes(m.toLowerCase()));
+    // Sort skills: matched ones first, then others
+    const sortedSkills = [...skills].sort((a, b) => {
+      const aMatched = isSkillMatched(a);
+      const bMatched = isSkillMatched(b);
+      if (aMatched && !bMatched) return -1;
+      if (!aMatched && bMatched) return 1;
+      return 0;
+    });
+
+    const formattedSkills = sortedSkills.map(skill => {
+      const isMatched = isSkillMatched(skill);
       return isMatched ? `\\keyword{${escapeLatex(skill)}}` : escapeLatex(skill);
     }).join(", ");
 
@@ -258,6 +274,7 @@ export function buildSkillsSection(
 /**
  * Build dynamic skills section for non-developer profiles (Feature 2)
  * Uses the dynamicCategories from CV extraction
+ * Matched skills are prioritized first and highlighted
  */
 export function buildDynamicSkillsSection(
   dynamicCategories: DynamicSkillCategory[],
@@ -266,6 +283,13 @@ export function buildDynamicSkillsSection(
 ): string {
   const header = SECTION_HEADERS[language].skills;
   const matchedSet = new Set(matchedSkills.map(s => s.toLowerCase()));
+
+  // Helper to check if a skill matches
+  const isSkillMatched = (skill: string): boolean => {
+    const skillLower = skill.toLowerCase();
+    return matchedSet.has(skillLower) ||
+      matchedSkills.some(m => skillLower.includes(m.toLowerCase()) || m.toLowerCase().includes(skillLower));
+  };
 
   const lines: string[] = [`\\section{${header}}`];
   lines.push("\\begin{itemize}[leftmargin=*, itemsep=1pt, parsep=0pt]");
@@ -278,9 +302,17 @@ export function buildDynamicSkillsSection(
 
     const categoryName = language === "fr" ? category.name : category.nameEn;
 
-    const formattedSkills = category.skills.map(skill => {
-      const isMatched = matchedSet.has(skill.toLowerCase()) ||
-        matchedSkills.some(m => skill.toLowerCase().includes(m.toLowerCase()));
+    // Sort skills: matched ones first
+    const sortedSkills = [...category.skills].sort((a, b) => {
+      const aMatched = isSkillMatched(a);
+      const bMatched = isSkillMatched(b);
+      if (aMatched && !bMatched) return -1;
+      if (!aMatched && bMatched) return 1;
+      return 0;
+    });
+
+    const formattedSkills = sortedSkills.map(skill => {
+      const isMatched = isSkillMatched(skill);
       return isMatched ? `\\keyword{${escapeLatex(skill)}}` : escapeLatex(skill);
     }).join(", ");
 
