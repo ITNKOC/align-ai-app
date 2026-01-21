@@ -346,31 +346,16 @@ interface CelebrationContextType {
 const CelebrationContext = createContext<CelebrationContextType | null>(null);
 
 export function CelebrationProvider({ children }: { children: ReactNode }) {
-  const [celebration, setCelebration] = useState<{
-    type: CelebrationType;
-    message?: string;
-    visible: boolean;
-  } | null>(null);
-
-  const celebrate = useCallback((type: CelebrationType, customMessage?: string) => {
-    setCelebration({ type, message: customMessage, visible: true });
-  }, []);
-
-  const handleComplete = useCallback(() => {
-    setCelebration(null);
+  // Celebrations disabled - replaced with subtle toasts
+  // The celebrate function is now a no-op
+  const celebrate = useCallback((_type: CelebrationType, _customMessage?: string) => {
+    // No-op: celebrations are disabled for better UX
+    // Use toast notifications instead where appropriate
   }, []);
 
   return (
     <CelebrationContext.Provider value={{ celebrate }}>
       {children}
-      {celebration && (
-        <Celebration
-          type={celebration.type}
-          isVisible={celebration.visible}
-          customMessage={celebration.message}
-          onComplete={handleComplete}
-        />
-      )}
     </CelebrationContext.Provider>
   );
 }
@@ -378,7 +363,9 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
 export function useCelebration() {
   const context = useContext(CelebrationContext);
   if (!context) {
-    throw new Error("useCelebration must be used within CelebrationProvider");
+    // Return a no-op celebrate function when used outside provider
+    // This effectively disables all celebration modals app-wide
+    return { celebrate: () => {} };
   }
   return context;
 }

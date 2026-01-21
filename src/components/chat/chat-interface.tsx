@@ -19,7 +19,7 @@ import {
   Circle,
 } from "lucide-react";
 import { MessageBubble, TypingIndicator } from "./message-bubble";
-import { MiniCelebration, useCelebration } from "@/components/shared/celebration";
+import { toast } from "sonner";
 import type { ChatMessage, GapAnalysis, Strategy, GapSlot, SuggestedReply } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -56,31 +56,26 @@ export function ChatInterface({
   const [showSkipAllConfirm, setShowSkipAllConfirm] = useState(false);
   const [isSkippingAll, setIsSkippingAll] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
-  const [showMiniCelebration, setShowMiniCelebration] = useState(false);
   const [prevGapIndex, setPrevGapIndex] = useState(currentGapIndex);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Celebration hook for big milestones
-  const { celebrate } = useCelebration();
-
   const currentGap = gaps[currentGapIndex];
 
-  // Trigger celebration when moving to next gap
+  // Subtle toast notification when moving to next gap
   useEffect(() => {
     if (currentGapIndex > prevGapIndex && prevGapIndex < gaps.length) {
-      // Gap completed - trigger celebration!
-      celebrate("gap_completed", `${gaps[prevGapIndex]?.skill || "Competence"} valide !`);
+      toast.success(`${gaps[prevGapIndex]?.skill || "Competence"} valide`, { duration: 1500 });
     }
     setPrevGapIndex(currentGapIndex);
-  }, [currentGapIndex, prevGapIndex, gaps, celebrate]);
+  }, [currentGapIndex, prevGapIndex, gaps]);
 
-  // Trigger celebration when all gaps are done
+  // Subtle toast when all gaps are done
   useEffect(() => {
     if (isComplete && strategies.length > 0) {
-      celebrate("all_gaps_done", `${strategies.length} strategies pretes !`);
+      toast.success(`${strategies.length} strategies pretes`, { duration: 2000 });
     }
-  }, [isComplete, strategies.length, celebrate]);
+  }, [isComplete, strategies.length]);
   const lastAssistantMessage = [...messages].reverse().find((m) => m.role === "assistant");
   const suggestedReplies = lastAssistantMessage?.suggestedReplies || [];
 
@@ -110,12 +105,6 @@ export function ChatInterface({
     if (isSending) return;
     setIsSending(true);
     setShowCustomInput(false);
-
-    // Show mini celebration for positive validation
-    if (suggestion.type === "positive") {
-      setShowMiniCelebration(true);
-      setTimeout(() => setShowMiniCelebration(false), 1500);
-    }
 
     try {
       await onSendMessage(suggestion.value);
@@ -402,15 +391,6 @@ export function ChatInterface({
                   exit={{ opacity: 0, y: -10 }}
                   className="space-y-2"
                 >
-                  {/* Mini Celebration */}
-                  <AnimatePresence>
-                    {showMiniCelebration && (
-                      <div className="flex justify-center">
-                        <MiniCelebration isVisible={showMiniCelebration} message="Valide !" />
-                      </div>
-                    )}
-                  </AnimatePresence>
-
                   {/* Primary Action - Full width */}
                   {suggestedReplies[0] && (
                     <motion.button

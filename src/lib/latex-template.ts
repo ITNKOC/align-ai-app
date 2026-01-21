@@ -6,7 +6,14 @@
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import type { CVData, Experience, Project, Education, SupportedLanguage } from "./types";
+import type {
+  CVData,
+  Experience,
+  Project,
+  Education,
+  SupportedLanguage,
+  DynamicSkillCategory,
+} from "./types";
 
 // ==================== TYPES ====================
 
@@ -175,9 +182,8 @@ function buildContactLine(sections: CVSections): string {
 export function fillTemplate(
   template: string,
   sections: CVSections,
-  options: TemplateOptions = {}
+  _options: TemplateOptions = {}
 ): string {
-  const { language = "fr" } = options;
   let result = template;
 
   // Replace name
@@ -250,6 +256,44 @@ export function buildSkillsSection(
 }
 
 /**
+ * Build dynamic skills section for non-developer profiles (Feature 2)
+ * Uses the dynamicCategories from CV extraction
+ */
+export function buildDynamicSkillsSection(
+  dynamicCategories: DynamicSkillCategory[],
+  matchedSkills: string[],
+  language: SupportedLanguage = "fr"
+): string {
+  const header = SECTION_HEADERS[language].skills;
+  const matchedSet = new Set(matchedSkills.map(s => s.toLowerCase()));
+
+  const lines: string[] = [`\\section{${header}}`];
+  lines.push("\\begin{itemize}[leftmargin=*, itemsep=1pt, parsep=0pt]");
+
+  // Sort by priority
+  const sortedCategories = [...dynamicCategories].sort((a, b) => a.priority - b.priority);
+
+  for (const category of sortedCategories) {
+    if (!category.skills || category.skills.length === 0) continue;
+
+    const categoryName = language === "fr" ? category.name : category.nameEn;
+
+    const formattedSkills = category.skills.map(skill => {
+      const isMatched = matchedSet.has(skill.toLowerCase()) ||
+        matchedSkills.some(m => skill.toLowerCase().includes(m.toLowerCase()));
+      return isMatched ? `\\keyword{${escapeLatex(skill)}}` : escapeLatex(skill);
+    }).join(", ");
+
+    lines.push(`  \\item \\textbf{${escapeLatex(categoryName)}:} ${formattedSkills}`);
+  }
+
+  lines.push("\\end{itemize}");
+  lines.push("");
+
+  return lines.join("\n");
+}
+
+/**
  * Build experience section LaTeX
  */
 export function buildExperienceSection(
@@ -281,8 +325,14 @@ export function buildExperienceSection(
         // Highlight matched skills in bullets
         let processedBullet = bullet;
         for (const skill of matchedSkills) {
-          const regex = new RegExp(`\\b(${skill})\\b`, "gi");
-          processedBullet = processedBullet.replace(regex, "\\keyword{$1}");
+          // Escape special regex characters (e.g., C++, C#, .NET)
+          const escapedSkill = skill.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          try {
+            const regex = new RegExp(`\\b(${escapedSkill})\\b`, "gi");
+            processedBullet = processedBullet.replace(regex, "\\keyword{$1}");
+          } catch {
+            // If regex fails, skip this skill
+          }
         }
         lines.push(`  \\item ${escapeLatexPreserveCommands(processedBullet)}`);
       }
@@ -392,6 +442,7 @@ export function buildLanguagesSection(
 
 /**
  * Build complete CV LaTeX from CVData and analysis results
+ * Supports dynamic skill categories for non-developer profiles (Feature 2)
  */
 export function buildCVLatex(
   cvData: CVData,
@@ -401,24 +452,45 @@ export function buildCVLatex(
 ): string {
   const { language = "fr", maxExperiences = 4, maxProjects = 3 } = options;
 
-  // Build skill categories
-  const skillsByCategory: Record<string, string[]> = {};
+  // Determine skill section based on profile type
+  let skillsContent: string;
+  const profileType = cvData.profileType || "developer";
 
-  if (cvData.skills.languages?.length) {
-    skillsByCategory[language === "fr" ? "Langages" : "Languages"] = cvData.skills.languages;
+  // Use dynamic categories if available and profile is non-developer
+  if (profileType !== "developer" && cvData.skills.dynamicCategories?.length) {
+    skillsContent = buildDynamicSkillsSection(
+      cvData.skills.dynamicCategories,
+      matchedSkills,
+      language
+    );
+  } else {
+    // Default developer-oriented skill categories
+    const skillsByCategory: Record<string, string[]> = {};
+
+    if (cvData.skills.languages?.length) {
+      skillsByCategory[language === "fr" ? "Langages" : "Languages"] = cvData.skills.languages;
+    }
+    if (cvData.skills.frameworks?.length) {
+      skillsByCategory["Frameworks"] = cvData.skills.frameworks;
+    }
+    if (cvData.skills.aiAndData?.length) {
+      skillsByCategory[language === "fr" ? "IA & Data" : "AI & Data"] = cvData.skills.aiAndData;
+    }
+    if (cvData.skills.toolsAndCloud?.length) {
+      skillsByCategory[language === "fr" ? "Outils & Cloud" : "Tools & Cloud"] = cvData.skills.toolsAndCloud;
+    }
+    if (cvData.skills.softSkills?.length) {
+      skillsByCategory[language === "fr" ? "Soft Skills" : "Soft Skills"] = cvData.skills.softSkills;
+    }
+
+    skillsContent = buildSkillsSection(skillsByCategory, matchedSkills, language);
   }
-  if (cvData.skills.frameworks?.length) {
-    skillsByCategory["Frameworks"] = cvData.skills.frameworks;
-  }
-  if (cvData.skills.aiAndData?.length) {
-    skillsByCategory[language === "fr" ? "IA & Data" : "AI & Data"] = cvData.skills.aiAndData;
-  }
-  if (cvData.skills.toolsAndCloud?.length) {
-    skillsByCategory[language === "fr" ? "Outils & Cloud" : "Tools & Cloud"] = cvData.skills.toolsAndCloud;
-  }
-  if (cvData.skills.softSkills?.length) {
-    skillsByCategory[language === "fr" ? "Soft Skills" : "Soft Skills"] = cvData.skills.softSkills;
-  }
+
+  // Determine max projects (Feature 2: minimum 3 if user has them)
+  const actualMaxProjects = Math.max(
+    maxProjects,
+    Math.min(cvData.projects?.length || 0, 3)
+  );
 
   // Build sections
   const sections: CVSections = {
@@ -430,9 +502,9 @@ export function buildCVLatex(
     github: cvData.personalInfo.githubUrl,
     portfolio: cvData.personalInfo.portfolioUrl,
     whyMe: buildWhyMeSection(whyMeContent, language),
-    skills: buildSkillsSection(skillsByCategory, matchedSkills, language),
+    skills: skillsContent,
     experience: buildExperienceSection(cvData.experiences, matchedSkills, language, maxExperiences),
-    projects: buildProjectsSection(cvData.projects, matchedSkills, language, maxProjects),
+    projects: buildProjectsSection(cvData.projects, matchedSkills, language, actualMaxProjects),
     education: buildEducationSection(cvData.education, language),
     languages: buildLanguagesSection(cvData.languages, language),
   };

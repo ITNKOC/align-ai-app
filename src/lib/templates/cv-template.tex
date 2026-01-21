@@ -19,17 +19,17 @@
 \usepackage{xcolor}
 
 % ============================================
-% COLORS (ATS-safe: primary used only for section rules)
+% COLORS (Black & White - ATS-optimized)
 % ============================================
-\definecolor{primary}{HTML}{4f46e5}
-\definecolor{text}{HTML}{1f2937}
-\definecolor{muted}{HTML}{6b7280}
+\definecolor{primary}{HTML}{000000}
+\definecolor{text}{HTML}{000000}
+\definecolor{muted}{HTML}{444444}
 
 % ============================================
 % SECTION FORMATTING
 % ============================================
 \titleformat{\section}
-  {\Large\bfseries\color{primary}}{}{0em}{}[\titlerule]
+  {\Large\bfseries}{}{0em}{}[\titlerule]
 \titlespacing*{\section}{0pt}{12pt}{6pt}
 
 \titleformat{\subsection}
@@ -70,12 +70,12 @@
 \setlist[itemize]{leftmargin=*, itemsep=2pt, parsep=0pt}
 
 % ============================================
-% HYPERLINK SETUP
+% HYPERLINK SETUP (Black & White)
 % ============================================
 \hypersetup{
-  colorlinks=true,
-  linkcolor=primary,
-  urlcolor=primary,
+  colorlinks=false,
+  linkcolor=black,
+  urlcolor=black,
   pdfborder={0 0 0}
 }
 

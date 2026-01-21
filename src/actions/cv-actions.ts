@@ -55,12 +55,14 @@ export async function uploadAndParseCV(formData: FormData): Promise<CVUploadResu
     const cvData = await generateJSON<CVData>(prompt);
 
     // Save to database with user association
+    // Feature 2: Store detected profile type
     const profile = await prisma.masterProfile.create({
       data: {
         userId: session.id,
         name: profileName || `CV - ${cvData.personalInfo?.fullName || "Sans nom"}`,
         rawText,
         structuredData: cvData as object,
+        profileType: cvData.profileType || "generalist",
       },
     });
 
@@ -104,6 +106,7 @@ export async function getProfile(profileId: string) {
         name: profile.name,
         cvData: profile.structuredData as unknown as CVData,
         rawText: profile.rawText,
+        profileType: profile.profileType || "generalist",
       },
     };
   } catch (error) {
@@ -136,6 +139,7 @@ export async function getUserProfiles() {
         id: p.id,
         name: p.name,
         cvData: p.structuredData as unknown as CVData,
+        profileType: p.profileType || "generalist",
         createdAt: p.createdAt,
       })),
     };

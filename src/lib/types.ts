@@ -13,6 +13,77 @@ export interface LanguageDetectionResult {
   method: "pattern" | "gemini";
 }
 
+// ==================== PROFILE TYPE DETECTION (Feature 2) ====================
+
+export type ProfileType =
+  | "developer"    // Languages, Frameworks, Tools
+  | "designer"     // Design Tools, Prototyping, UX Research
+  | "marketer"     // Channels, Analytics, Content
+  | "manager"      // Methodologies, Leadership, Management
+  | "sales"        // Negotiation, CRM, Prospecting
+  | "analyst"      // Data Tools, Visualization, SQL
+  | "researcher"   // Publications, Methodology, Domain
+  | "generalist";  // Standard structure
+
+export interface DynamicSkillCategory {
+  name: string;           // Category name (localized)
+  nameEn: string;         // English name
+  skills: string[];       // Skills in this category
+  priority: number;       // Display order (lower = higher priority)
+}
+
+// Profile-specific skill category configurations
+export const PROFILE_SKILL_CATEGORIES: Record<ProfileType, { fr: string; en: string }[]> = {
+  developer: [
+    { fr: "Langages", en: "Languages" },
+    { fr: "Frameworks", en: "Frameworks" },
+    { fr: "IA & Data", en: "AI & Data" },
+    { fr: "Outils & Cloud", en: "Tools & Cloud" },
+  ],
+  designer: [
+    { fr: "Outils Design", en: "Design Tools" },
+    { fr: "Prototypage", en: "Prototyping" },
+    { fr: "UX Research", en: "UX Research" },
+    { fr: "Outils Collaboration", en: "Collaboration Tools" },
+  ],
+  marketer: [
+    { fr: "Canaux Marketing", en: "Marketing Channels" },
+    { fr: "Analytics & Data", en: "Analytics & Data" },
+    { fr: "Content & SEO", en: "Content & SEO" },
+    { fr: "Outils Marketing", en: "Marketing Tools" },
+  ],
+  manager: [
+    { fr: "Methodologies", en: "Methodologies" },
+    { fr: "Leadership", en: "Leadership" },
+    { fr: "Gestion de Projet", en: "Project Management" },
+    { fr: "Outils", en: "Tools" },
+  ],
+  sales: [
+    { fr: "Techniques de Vente", en: "Sales Techniques" },
+    { fr: "CRM & Outils", en: "CRM & Tools" },
+    { fr: "Negociation", en: "Negotiation" },
+    { fr: "Prospection", en: "Prospecting" },
+  ],
+  analyst: [
+    { fr: "Outils Data", en: "Data Tools" },
+    { fr: "Visualisation", en: "Visualization" },
+    { fr: "SQL & Databases", en: "SQL & Databases" },
+    { fr: "Statistiques", en: "Statistics" },
+  ],
+  researcher: [
+    { fr: "Methodologie", en: "Methodology" },
+    { fr: "Domaine d'Expertise", en: "Domain Expertise" },
+    { fr: "Publications", en: "Publications" },
+    { fr: "Outils", en: "Tools" },
+  ],
+  generalist: [
+    { fr: "Competences Techniques", en: "Technical Skills" },
+    { fr: "Competences Metier", en: "Domain Skills" },
+    { fr: "Outils", en: "Tools" },
+    { fr: "Soft Skills", en: "Soft Skills" },
+  ],
+};
+
 // ==================== CV STRUCTURED DATA ====================
 
 export interface PersonalInfo {
@@ -55,6 +126,8 @@ export interface Skills {
   aiAndData: string[];
   toolsAndCloud: string[];
   softSkills: string[];
+  // Dynamic skills for non-developer profiles (Feature 2)
+  dynamicCategories?: DynamicSkillCategory[];
 }
 
 export interface CVData {
@@ -64,6 +137,8 @@ export interface CVData {
   projects: Project[];
   skills: Skills;
   languages: { language: string; level: string }[];
+  // Profile type detection (Feature 2)
+  profileType?: ProfileType;
 }
 
 // ==================== ENHANCED GAP ANALYSIS ====================

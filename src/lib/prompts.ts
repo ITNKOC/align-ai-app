@@ -37,9 +37,23 @@ RÈGLES D'EXTRACTION:
 4. Normalise les noms de technologies (ex: "JS" → "JavaScript", "TS" → "TypeScript")
 5. Déduis le niveau de séniorité approximatif
 
+DÉTECTION DU TYPE DE PROFIL (TRÈS IMPORTANT):
+Analyse le parcours global et détermine le type de profil principal:
+- "developer": Développeur, ingénieur logiciel, tech lead (mots-clés: code, développement, programmation, API, backend, frontend)
+- "designer": Designer, UX/UI, graphiste (mots-clés: design, Figma, Sketch, wireframe, prototypage, UX)
+- "marketer": Marketing, growth, communication (mots-clés: SEO, analytics, campagnes, acquisition, content)
+- "manager": Manager, chef de projet, directeur (mots-clés: management, équipe, budget, planification, stratégie)
+- "sales": Commercial, business development (mots-clés: vente, prospection, négociation, CRM, closing)
+- "analyst": Data analyst, business analyst (mots-clés: SQL, Excel, tableaux de bord, reporting, KPIs)
+- "researcher": Chercheur, scientifique (mots-clés: recherche, publications, PhD, méthodologie scientifique)
+- "generalist": Si aucune catégorie ne domine clairement
+
+Pour les profils NON-développeurs, organise les compétences dans "dynamicCategories" avec des catégories adaptées au profil.
+
 IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, sans texte avant ou après.
 
 {
+  "profileType": "developer | designer | marketer | manager | sales | analyst | researcher | generalist",
   "personalInfo": {
     "fullName": "string",
     "email": "string",
@@ -77,11 +91,19 @@ IMPORTANT: Réponds UNIQUEMENT avec un JSON valide, sans texte avant ou après.
     }
   ],
   "skills": {
-    "languages": ["string - langages de programmation uniquement"],
-    "frameworks": ["string - frameworks et bibliothèques"],
+    "languages": ["string - langages de programmation (pour développeurs)"],
+    "frameworks": ["string - frameworks et bibliothèques (pour développeurs)"],
     "aiAndData": ["string - outils IA, ML, data"],
     "toolsAndCloud": ["string - DevOps, cloud, outils"],
-    "softSkills": ["string - compétences humaines déduites du parcours"]
+    "softSkills": ["string - compétences humaines déduites du parcours"],
+    "dynamicCategories": [
+      {
+        "name": "string - nom de la catégorie adapté au profil",
+        "nameEn": "string - English name",
+        "skills": ["string - compétences dans cette catégorie"],
+        "priority": "number - ordre d'affichage (1 = premier)"
+      }
+    ]
   },
   "languages": [
     {
@@ -901,15 +923,75 @@ ${allCollectedProjects.map((p) => `- ${p.name} (${p.context}, ${p.year || "N/A"}
 
 ## 📋 MISSION: GÉNÉRER UN CV PARFAIT
 
-### ÉTAPE 1: Section "POURQUOI MOI" (CRITIQUE)
-Cette section apparaît EN HAUT du CV, juste après le nom. Elle doit répondre en 3-4 lignes à:
-"Pourquoi ce candidat est parfait pour CE poste spécifique?"
+### ÉTAPE 1: Section "POURQUOI MOI" (ULTRA-CRITIQUE - MAKE OR BREAK)
 
-Structure obligatoire:
-- Phrase 1: X années d'expérience dans [domaine pertinent pour l'offre]
-- Phrase 2: Expertise principale qui MATCHE directement avec l'offre
-- Phrase 3: 2-3 compétences clés EXACTEMENT comme dans l'offre
-- Phrase 4: Élément différenciant (projet, métrique, réalisation)
+⚠️ **CETTE SECTION DÉTERMINE SI LE CV EST LU OU JETÉ EN 6 SECONDES**
+
+La section "Pourquoi Moi" apparaît EN HAUT du CV, juste après le nom. Elle doit:
+1. **CAPTER L'ATTENTION** en 1 seconde avec un HOOK percutant
+2. **DÉMONTRER LA VALEUR** immédiate pour CE poste précis
+3. **DIFFÉRENCIER** le candidat de la masse des autres CVs
+
+**🚫 INTERDIT - Formules génériques à BANNIR:**
+- "Passionné par..." / "Motivé par..." / "Dynamique"
+- "X ans d'expérience" (trop banal)
+- "Solide expérience en..." (vide de sens)
+- Toute phrase qu'on pourrait mettre sur n'importe quel CV
+
+**✅ OBLIGATOIRE - Structure HOOK + PROOF + MATCH + VALUE:**
+
+**Phrase 1 (HOOK - Résultat concret):**
+Commence par un CHIFFRE ou une RÉALISATION tangible du candidat.
+- Bon: "Architecture ayant supporté 50K utilisateurs simultanés."
+- Bon: "3 apps en production, 15K téléchargements cumulés."
+- Bon: "Migration cloud réduisant les coûts infra de moitié."
+
+**Phrase 2 (PROOF - Expertise démontrée):**
+Mentionne les technologies EXACTES de l'offre avec preuve d'utilisation.
+- Bon: "\\textbf{React} + \\textbf{Node.js} en production depuis 4 ans, de la startup au scale-up."
+- Bon: "Expert \\textbf{Python}/\\textbf{Django} - 3 projets e-commerce livrés."
+
+**Phrase 3 (MATCH - Réponse au problème implicite):**
+Montre que tu as DÉJÀ RÉSOLU le type de problème que l'entreprise cherche à résoudre.
+- Si l'offre parle de "scale" → "Expérience scaling d'équipe de 3 à 12 devs."
+- Si l'offre parle de "qualité" → "Culture TDD, couverture tests > 80% sur mes projets."
+- Si l'offre parle de "rapidité" → "Habitué aux cycles courts: sprint 1 semaine, déploiement continu."
+
+**Phrase 4 (VALUE - Proposition unique):**
+Ta valeur ajoutée UNIQUE pour CE poste (pas un autre).
+- Bon: "Atout: double casquette dev/DevOps, autonome de la feature au monitoring."
+- Bon: "Plus: expérience secteur ${analysisResult.company ? "similaire à " + analysisResult.company : "visé"}, onboarding rapide garanti."
+
+**EXEMPLES DE "POURQUOI MOI" EXCELLENTS:**
+
+Exemple 1 (Développeur Full-Stack):
+"APIs gérant 2M requêtes/jour en production. Expert \\textbf{TypeScript}/\\textbf{React}/\\textbf{Node.js} depuis 5 ans, du MVP au système distribué. Habitué aux équipes agiles et au code review exigeant. Mon plus: je livre, je documente, je forme."
+
+Exemple 2 (Data Engineer):
+"Pipelines traitant 500GB/jour sans incident depuis 18 mois. Maîtrise complète stack \\textbf{Python}/\\textbf{Spark}/\\textbf{Airflow}/\\textbf{AWS}. Expérience migration legacy → cloud (coûts divisés par 3). Autonome du besoin métier au dashboard final."
+
+Exemple 3 (DevOps):
+"Infra as Code pour 40 microservices, 99.9% uptime. \\textbf{Kubernetes}/\\textbf{Terraform}/\\textbf{GitLab CI} en environnement critique. Réduit le temps de déploiement de 2h à 8 minutes. Passé de 'ça marche sur ma machine' à 'ça tourne en prod'."
+
+**ANALYSE DU CANDIDAT POUR LE HOOK:**
+${(() => {
+  // Find best achievements from experiences
+  const achievements = cvData.experiences
+    .flatMap(exp => exp.bullets)
+    .filter(bullet => /\d+|amélio|rédui|augment|créé|développ|lancé|migr|optimi/i.test(bullet))
+    .slice(0, 3);
+
+  // Find problem-solution matches
+  const problemMatches = analysisResult.problemSolutionMatches?.slice(0, 2) || [];
+
+  return `
+Meilleurs achievements trouvés dans le CV:
+${achievements.map(a => `- ${a}`).join('\n') || '- Aucun achievement quantifié trouvé (utilise l\'expérience dominante)'}
+
+Problèmes de l\'entreprise que le candidat peut résoudre:
+${problemMatches.map(p => `- ${p.implicitProblem} → Preuve: ${p.candidateProof}`).join('\n') || '- Analyse les besoins implicites de l\'offre'}
+`;
+})()}
 
 ### ÉTAPE 2: Ordre DYNAMIQUE des Expériences
 RÉORDONNE les expériences du candidat PAR PERTINENCE pour cette offre:

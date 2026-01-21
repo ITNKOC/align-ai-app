@@ -33,6 +33,8 @@ interface DocumentPreviewProps {
   generationProgress: number;
   partialSuccess?: boolean;
   onRegenerate: (instructions?: string) => Promise<void>;
+  onRetryPDF?: () => Promise<void>;
+  isRetryingPDF?: boolean;
   onStartNew: () => void;
 }
 
@@ -45,6 +47,8 @@ export function DocumentPreview({
   generationProgress,
   partialSuccess,
   onRegenerate,
+  onRetryPDF,
+  isRetryingPDF = false,
   onStartNew,
 }: DocumentPreviewProps) {
   const [activeTab, setActiveTab] = useState("cv");
@@ -159,6 +163,35 @@ export function DocumentPreview({
                   ? "Copiez le code LaTeX et compilez-le sur Overleaf.com pour générer vos PDF."
                   : "Vos documents sont prêts ! Téléchargez-les ou copiez le code LaTeX pour les modifier."}
               </p>
+
+              {/* Retry PDF Button - Only shown when partialSuccess */}
+              {partialSuccess && onRetryPDF && (
+                <motion.button
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  onClick={onRetryPDF}
+                  disabled={isRetryingPDF}
+                  className="mt-3 flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                >
+                  {isRetryingPDF ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </motion.div>
+                      Compilation en cours...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      Retenter la compilation PDF
+                    </>
+                  )}
+                </motion.button>
+              )}
             </div>
           </div>
         </div>

@@ -23,9 +23,10 @@ interface SkillsManagerProps {
   isLoading?: boolean;
 }
 
-type SkillCategory = keyof Skills;
+// Only include editable string[] categories (exclude dynamicCategories)
+type EditableSkillCategory = "languages" | "frameworks" | "aiAndData" | "toolsAndCloud" | "softSkills";
 
-const categoryConfig: Record<SkillCategory, { label: string; icon: React.ReactNode; color: string }> = {
+const categoryConfig: Record<EditableSkillCategory, { label: string; icon: React.ReactNode; color: string }> = {
   languages: {
     label: "Langages",
     icon: <Code className="w-4 h-4" />,
@@ -54,14 +55,14 @@ const categoryConfig: Record<SkillCategory, { label: string; icon: React.ReactNo
 };
 
 export function SkillsManager({ skills, onUpdateSkills, isLoading }: SkillsManagerProps) {
-  const [editingCategory, setEditingCategory] = useState<SkillCategory | null>(null);
+  const [editingCategory, setEditingCategory] = useState<EditableSkillCategory | null>(null);
   const [newSkill, setNewSkill] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Skills | null>(null);
 
   const currentSkills = pendingChanges || skills;
 
-  const handleAddSkill = (category: SkillCategory) => {
+  const handleAddSkill = (category: EditableSkillCategory) => {
     if (!newSkill.trim()) return;
 
     const updatedSkills = {
@@ -73,7 +74,7 @@ export function SkillsManager({ skills, onUpdateSkills, isLoading }: SkillsManag
     setNewSkill("");
   };
 
-  const handleRemoveSkill = (category: SkillCategory, skillToRemove: string) => {
+  const handleRemoveSkill = (category: EditableSkillCategory, skillToRemove: string) => {
     const updatedSkills = {
       ...currentSkills,
       [category]: (currentSkills[category] || []).filter((s) => s !== skillToRemove),
@@ -116,7 +117,7 @@ export function SkillsManager({ skills, onUpdateSkills, isLoading }: SkillsManag
           <div>
             <h3 className="font-semibold text-white text-sm sm:text-base">Mes Competences</h3>
             <p className="text-[10px] sm:text-xs text-white/50">
-              {Object.values(currentSkills).flat().length} competences
+              {(Object.keys(categoryConfig) as EditableSkillCategory[]).reduce((acc, cat) => acc + (currentSkills[cat]?.length || 0), 0)} competences
             </p>
           </div>
         </div>
@@ -157,7 +158,7 @@ export function SkillsManager({ skills, onUpdateSkills, isLoading }: SkillsManag
 
       {/* Skills by category */}
       <div className="space-y-3">
-        {(Object.keys(categoryConfig) as SkillCategory[]).map((category) => {
+        {(Object.keys(categoryConfig) as EditableSkillCategory[]).map((category) => {
           const config = categoryConfig[category];
           const categorySkills = currentSkills[category] || [];
           const isEditing = editingCategory === category;

@@ -37,6 +37,10 @@ model MasterProfile {
   fileName       String?    // Original file name
   fileSize       Int?       // File size in bytes
 
+  // Profile Type Detection (Feature 2)
+  // Detected profile type: developer, designer, marketer, manager, sales, analyst, researcher, generalist
+  profileType    String?    @default("generalist")
+
   // Intelligence Progressive - Learned gaps from previous applications
   // Structure: { [skill]: { strategy, evidence, confidence, lastUsed, usageCount } }
   learnedGaps    Json       @default("{}")

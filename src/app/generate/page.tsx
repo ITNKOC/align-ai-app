@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -21,20 +21,18 @@ import { AppNavbar } from "@/components/shared/app-navbar";
 import { PhaseIndicator } from "@/components/shared/phase-indicator";
 import { DocumentPreview } from "@/components/generation/document-preview";
 import { BeforeAfterComparison } from "@/components/generation/before-after-comparison";
-import { useCelebration } from "@/components/shared/celebration";
 import {
   generateDocuments,
   getGeneratedDocuments,
   regenerateDocuments,
   regenerateFollowUpEmail,
   getComparisonData,
+  retryPDFCompilation,
 } from "@/actions/generation-actions";
 import type { FollowUpEmail, CVData, AnalysisResult, Strategy } from "@/lib/types";
 
 export default function GeneratePage() {
   const router = useRouter();
-  const { celebrate } = useCelebration();
-  const hasCelebrated = useRef(false);
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
@@ -47,6 +45,7 @@ export default function GeneratePage() {
   const [followUpEmail, setFollowUpEmail] = useState<FollowUpEmail | undefined>();
   const [isRegeneratingEmail, setIsRegeneratingEmail] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [isRetryingPDF, setIsRetryingPDF] = useState(false);
   // Comparison data for Avant/Après
   const [comparisonData, setComparisonData] = useState<{
     cvData: CVData;
@@ -141,12 +140,7 @@ export default function GeneratePage() {
         if (result.followUpEmail) {
           setFollowUpEmail(result.followUpEmail);
         }
-        toast.success("Documents générés avec succès !");
-        // Trigger celebration on first successful generation
-        if (!hasCelebrated.current) {
-          hasCelebrated.current = true;
-          setTimeout(() => celebrate("document_ready", "CV et lettre de motivation prêts !"), 500);
-        }
+        toast.success("Documents generés avec succes !");
       } else if (result.partialSuccess) {
         // LaTeX generated but PDF compilation failed
         setPartialSuccess(true);
@@ -265,6 +259,30 @@ export default function GeneratePage() {
     setTimeout(() => setCopiedEmail(false), 2000);
   }, [followUpEmail]);
 
+  const handleRetryPDF = useCallback(async () => {
+    if (!applicationId) return;
+
+    setIsRetryingPDF(true);
+    try {
+      const result = await retryPDFCompilation(applicationId);
+
+      if (result.success && result.cvPdfBase64 && result.coverPdfBase64) {
+        setCvPdfUrl(createPdfUrl(result.cvPdfBase64));
+        setCoverPdfUrl(createPdfUrl(result.coverPdfBase64));
+        setPartialSuccess(false);
+        toast.success("PDF compiles avec succes !");
+      } else if (result.partialSuccess) {
+        toast.error("La compilation a echoue. Utilisez Overleaf pour compiler manuellement.");
+      } else {
+        toast.error(result.error || "Erreur lors de la compilation");
+      }
+    } catch (error) {
+      toast.error("Erreur lors de la tentative de compilation");
+    } finally {
+      setIsRetryingPDF(false);
+    }
+  }, [applicationId]);
+
   // Cleanup blob URLs on unmount
   useEffect(() => {
     return () => {
@@ -359,6 +377,8 @@ export default function GeneratePage() {
             generationProgress={generationProgress}
             partialSuccess={partialSuccess}
             onRegenerate={handleRegenerate}
+            onRetryPDF={handleRetryPDF}
+            isRetryingPDF={isRetryingPDF}
             onStartNew={handleStartNew}
           />
         </motion.div>
@@ -544,7 +564,8 @@ export default function GeneratePage() {
         )}
 
         {/* Success Action Section - Go to Dashboard */}
-        {!isGenerating && (cvPdfUrl || cvLatex) && (
+        {/* Only show when PDF is successfully generated (not in partialSuccess state) */}
+        {!isGenerating && cvPdfUrl && !partialSuccess && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
