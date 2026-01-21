@@ -218,29 +218,16 @@ export default function ChatPage() {
   return (
     <div className="min-h-screen pb-20 md:pb-8 flex flex-col">
       <AppNavbar />
-      <main className="container-app py-4 flex flex-col flex-1 min-h-0">
-        <PhaseIndicator currentPhase={3} />
-        {/* Header */}
-        <div className="text-center mb-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <span className="badge badge-primary mb-2">Etape 3</span>
-            <h1 className="text-xl sm:text-2xl font-bold text-white">
-              Chat <span className="gradient-text">strategique</span>
-            </h1>
-            <p className="text-sm text-white/50 mt-1">
-              Explorez vos competences pour combler les gaps
-            </p>
-          </motion.div>
+      <main className="container-app py-2 sm:py-4 flex flex-col flex-1 min-h-0">
+        {/* Phase indicator - compact on mobile */}
+        <div className="hidden sm:block">
+          <PhaseIndicator currentPhase={3} />
         </div>
 
-        {/* Chat Interface */}
+        {/* Chat Interface - Full height mobile-first */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
           className="flex-1 min-h-0 overflow-hidden card-modern"
         >
           <ChatInterface

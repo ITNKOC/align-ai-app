@@ -33,6 +33,11 @@ export async function uploadAndParseCV(formData: FormData): Promise<CVUploadResu
       return { success: false, error: "Seuls les fichiers PDF sont acceptés" };
     }
 
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_FILE_SIZE) {
+      return { success: false, error: "Le fichier ne doit pas dépasser 10 Mo" };
+    }
+
     // Extract text from PDF
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);

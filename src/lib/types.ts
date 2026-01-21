@@ -3,6 +3,16 @@
 // Architecture: Slot Filling + ReAct + Task Memory
 // ============================================
 
+// ==================== LANGUAGE SUPPORT (Story 5.7) ====================
+
+export type SupportedLanguage = "fr" | "en";
+
+export interface LanguageDetectionResult {
+  language: SupportedLanguage;
+  confidence: number; // 0-1 confidence score
+  method: "pattern" | "gemini";
+}
+
 // ==================== CV STRUCTURED DATA ====================
 
 export interface PersonalInfo {
@@ -376,6 +386,97 @@ export interface LearnedGap {
 
 // Storage format in MasterProfile.learnedGaps
 export type LearnedGapsRecord = Record<string, LearnedGap>;
+
+// ==================== PROFILE UPDATE TYPES (Story 2.2) ====================
+
+export interface ProfileUpdatePayload {
+  personalInfo?: Partial<PersonalInfo>;
+  skills?: Skills;
+  experiences?: ExperienceItem[];
+  projects?: ProjectItem[];
+  education?: EducationItem[];
+}
+
+export interface ExperienceItem {
+  id: string;
+  company: string;
+  role: string;
+  location?: string;
+  startDate: string;
+  endDate?: string;
+  current: boolean;
+  description: string;
+  achievements: string[];
+}
+
+export interface ProjectItem {
+  id: string;
+  name: string;
+  description: string;
+  technologies: string[];
+  url?: string;
+  highlights: string[];
+  year?: string;
+}
+
+export interface EducationItem {
+  id: string;
+  institution: string;
+  degree: string;
+  field: string;
+  location?: string;
+  startDate: string;
+  endDate?: string;
+  current: boolean;
+}
+
+// ==================== SKILL MATCHING TYPES (Story 5.6) ====================
+
+export interface SkillMatch {
+  skill: string;
+  matchType: 'exact' | 'partial' | 'synonym';
+  category: string;
+  score: number;
+}
+
+export interface OrganizedSkills {
+  matched: {
+    category: string;
+    skills: SkillMatch[];
+  }[];
+  other: string[];
+}
+
+export interface SkillCategory {
+  name: string;
+  nameEn: string;
+  keywords: string[];
+}
+
+// ==================== CV TEMPLATE TYPES (Story 5.8) ====================
+
+export interface CVSections {
+  name: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+  whyMe: string;      // LaTeX content
+  skills: string;     // LaTeX content
+  experience: string; // LaTeX content
+  projects: string;   // LaTeX content
+  education: string;  // LaTeX content
+  languages?: string; // LaTeX content
+}
+
+export interface TemplateOptions {
+  language?: SupportedLanguage;
+  includeWhyMe?: boolean;
+  maxExperiences?: number;
+  maxProjects?: number;
+}
 
 // ==================== UTILITY TYPES ====================
 

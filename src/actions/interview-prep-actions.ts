@@ -246,40 +246,18 @@ async function generateFullInterviewPrepDocument(applicationId: string): Promise
 
     console.log("[InterviewPrep] Full LaTeX document built, length:", fullLatex.length);
 
-    // Store LaTeX source first (AC3 fallback requirement)
+    // Store LaTeX source and mark as ready (no PDF compilation for interview prep)
+    // User will download .tex file and compile on Overleaf or similar
     await prisma.application.update({
       where: { id: applicationId },
       data: {
         interviewPrepLatex: fullLatex,
+        interviewPrepStatus: "ready",
+        interviewPrepError: null,
       },
     });
 
-    // Compile LaTeX to PDF with circuit breaker (AC1, AC2)
-    console.log("[InterviewPrep] Compiling PDF...");
-    const pdfResult = await compileInterviewPrepPdf(fullLatex);
-
-    if (pdfResult.success && pdfResult.pdf) {
-      // PDF compilation succeeded
-      await prisma.application.update({
-        where: { id: applicationId },
-        data: {
-          interviewPrepPdf: pdfResult.pdf as any,
-          interviewPrepStatus: "ready",
-          interviewPrepError: null,
-        },
-      });
-      console.log("[InterviewPrep] PDF compilation successful for:", applicationId);
-    } else {
-      // PDF compilation failed - LaTeX is still available as fallback (AC3)
-      await prisma.application.update({
-        where: { id: applicationId },
-        data: {
-          interviewPrepStatus: "failed",
-          interviewPrepError: pdfResult.error || "Compilation PDF echouee. Le fichier LaTeX est disponible en fallback.",
-        },
-      });
-      console.log("[InterviewPrep] PDF compilation failed, LaTeX available as fallback:", applicationId);
-    }
+    console.log("[InterviewPrep] LaTeX document ready for download:", applicationId);
   } catch (error) {
     console.error("[InterviewPrep] Document generation failed:", error);
 
@@ -297,78 +275,6 @@ async function generateFullInterviewPrepDocument(applicationId: string): Promise
       console.error("[InterviewPrep] Failed to update error status:", updateError);
     }
   }
-}
-
-// ==================== STORY 7.11: PDF COMPILATION WITH CIRCUIT BREAKER ====================
-
-const LATEXIA_URL = process.env.LATEX_API_URL || "https://latex.ytotech.com/builds/sync";
-const MAX_RETRIES = 2;
-const TIMEOUT_MS = 30000; // 30 seconds max (AC1)
-
-/**
- * Compile LaTeX to PDF with circuit breaker pattern (2 retries, 30s timeout)
- * Implements AC1: compilation completes in < 30 seconds
- * Implements AC2: professionally formatted PDF
- */
-async function compileInterviewPrepPdf(
-  latex: string
-): Promise<{ success: boolean; pdf?: Buffer; error?: string }> {
-  let lastError: string | undefined;
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      console.log(`[InterviewPrep] PDF compilation attempt ${attempt + 1}/${MAX_RETRIES + 1}`);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-      const response = await fetch(LATEXIA_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          compiler: "pdflatex",
-          resources: [
-            {
-              path: "main.tex",
-              content: latex,
-            },
-          ],
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const pdf = Buffer.from(await response.arrayBuffer());
-        console.log("[InterviewPrep] PDF compiled successfully, size:", pdf.length);
-        return { success: true, pdf };
-      } else {
-        const errorText = await response.text();
-        lastError = `Latexia error: ${response.status} - ${errorText.substring(0, 200)}`;
-        console.error(`[InterviewPrep] Latexia API error:`, lastError);
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        lastError = "Timeout: la compilation a pris trop de temps (> 30s)";
-        console.error("[InterviewPrep] Compilation timeout");
-      } else {
-        lastError = error instanceof Error ? error.message : "Erreur inconnue";
-        console.error("[InterviewPrep] Compilation error:", lastError);
-      }
-    }
-
-    // Wait before retry with exponential backoff
-    if (attempt < MAX_RETRIES) {
-      const waitTime = 1000 * (attempt + 1);
-      console.log(`[InterviewPrep] Waiting ${waitTime}ms before retry...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-  }
-
-  return { success: false, error: lastError };
 }
 
 /**
@@ -981,72 +887,11 @@ function cleanLatexSection(latex: string): string {
   return cleaned.trim();
 }
 
-// ==================== STORY 7.11: DOWNLOAD ENDPOINTS ====================
+// ==================== STORY 7.11: DOWNLOAD ENDPOINT ====================
 
 /**
- * Download interview prep PDF (AC2)
- * Returns PDF as base64 for client-side download
- */
-export async function downloadInterviewPrepPdf(
-  applicationId: string
-): Promise<{ success: boolean; pdfBase64?: string; filename?: string; error?: string }> {
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { success: false, error: "Non authentifie" };
-    }
-
-    // Verify ownership
-    const application = await prisma.application.findFirst({
-      where: {
-        id: applicationId,
-        jobOffer: {
-          masterProfile: {
-            userId: session.id,
-          },
-        },
-      },
-      select: {
-        interviewPrepPdf: true,
-        interviewPrepStatus: true,
-        jobOffer: {
-          select: {
-            title: true,
-            company: true,
-          },
-        },
-      },
-    });
-
-    if (!application) {
-      return { success: false, error: "Candidature non trouvee" };
-    }
-
-    if (application.interviewPrepStatus !== "ready" || !application.interviewPrepPdf) {
-      return { success: false, error: "PDF non disponible. Utilisez le fallback LaTeX." };
-    }
-
-    // Generate filename from job info
-    const safeName = `${application.jobOffer.company || "entreprise"}-${application.jobOffer.title || "poste"}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "-")
-      .replace(/-+/g, "-")
-      .substring(0, 50);
-
-    return {
-      success: true,
-      pdfBase64: Buffer.from(application.interviewPrepPdf).toString("base64"),
-      filename: `preparation-entretien-${safeName}.pdf`,
-    };
-  } catch (error) {
-    console.error("Download PDF error:", error);
-    return { success: false, error: "Erreur lors du telechargement du PDF" };
-  }
-}
-
-/**
- * Download interview prep LaTeX source (AC3 fallback)
- * Returns LaTeX source for compilation elsewhere
+ * Download interview prep LaTeX source
+ * User compiles on Overleaf or similar
  */
 export async function downloadInterviewPrepLatex(
   applicationId: string

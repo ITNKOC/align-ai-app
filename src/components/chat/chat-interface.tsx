@@ -169,25 +169,60 @@ export function ChatInterface({
     }
   };
 
+  // Track scroll direction for collapsible header
+  const [isScrolledDown, setIsScrolledDown] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    let lastScrollTop = 0;
+    const handleScroll = () => {
+      const scrollTop = container.scrollTop;
+      setIsScrolledDown(scrollTop > 50);
+      lastScrollTop = scrollTop;
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <div className="flex h-full flex-col">
-      {/* Compact Header */}
-      <div className="border-b border-white/10 bg-white/[0.02] px-4 py-3">
-        <div className="flex items-center justify-between gap-4">
-          {/* Current gap info */}
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-white" />
+    <div className="flex h-full flex-col relative">
+      {/* Compact Collapsible Header */}
+      <motion.div
+        className="sticky top-0 z-10 border-b border-white/10 bg-black/80 backdrop-blur-xl px-4"
+        animate={{
+          paddingTop: isScrolledDown ? 8 : 12,
+          paddingBottom: isScrolledDown ? 8 : 12
+        }}
+        transition={{ duration: 0.2 }}
+      >
+        <div className="flex items-center justify-between gap-3">
+          {/* Current gap pill */}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={cn(
+              "rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 transition-all",
+              isScrolledDown ? "w-7 h-7" : "w-8 h-8"
+            )}>
+              <Sparkles className={cn("text-white transition-all", isScrolledDown ? "w-3.5 h-3.5" : "w-4 h-4")} />
             </div>
-            <div className="min-w-0">
-              <h3 className="font-semibold text-white text-sm truncate">
-                {isComplete ? "Exploration terminee" : currentGap?.skill || "Competence"}
-              </h3>
-              <p className="text-xs text-white/50">
+            <div className="min-w-0 flex items-center gap-2">
+              <span className={cn(
+                "font-semibold text-white truncate transition-all",
+                isScrolledDown ? "text-xs" : "text-sm"
+              )}>
+                {isComplete ? "Termine" : currentGap?.skill || "Competence"}
+              </span>
+              <span className={cn(
+                "text-white/50 flex-shrink-0",
+                isScrolledDown ? "text-[10px]" : "text-xs"
+              )}>
                 {isComplete
-                  ? `${strategies.length} strategies definies`
-                  : `Gap ${currentGapIndex + 1}/${gaps.length}`}
-              </p>
+                  ? `${strategies.length} ok`
+                  : `${currentGapIndex + 1}/${gaps.length}`}
+              </span>
             </div>
           </div>
 
@@ -196,53 +231,67 @@ export function ChatInterface({
             <button
               onClick={() => setShowSkipAllConfirm(true)}
               disabled={isSkippingAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition-colors disabled:opacity-50"
+              className={cn(
+                "flex items-center gap-1.5 rounded-full font-medium bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition-all disabled:opacity-50",
+                isScrolledDown ? "px-2.5 py-1 text-[10px]" : "px-3 py-1.5 text-xs"
+              )}
             >
-              <Zap className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Generer maintenant</span>
-              <span className="sm:hidden">Generer</span>
+              <Zap className={cn("transition-all", isScrolledDown ? "w-3 h-3" : "w-3.5 h-3.5")} />
+              <span className="hidden sm:inline">Generer</span>
+              <ArrowRight className={cn("sm:hidden transition-all", isScrolledDown ? "w-3 h-3" : "w-3.5 h-3.5")} />
             </button>
           )}
         </div>
 
-        {/* Progress dots */}
-        <div className="flex items-center gap-1.5 mt-3 overflow-x-auto pb-1">
-          {gaps.map((gap, index) => {
-            const isCompleted = index < currentGapIndex || (gapSlots[index]?.status === "filled");
-            const isCurrent = index === currentGapIndex && !isComplete;
+        {/* Progress dots - collapsible on scroll */}
+        <AnimatePresence>
+          {!isScrolledDown && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="flex items-center gap-2 mt-2 overflow-x-auto pb-1 scrollbar-hide">
+                {gaps.map((gap, index) => {
+                  const isCompleted = index < currentGapIndex || (gapSlots[index]?.status === "filled");
+                  const isCurrent = index === currentGapIndex && !isComplete;
 
-            return (
-              <motion.div
-                key={gap.skill}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: index * 0.02 }}
-                className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium whitespace-nowrap transition-all",
-                  isCompleted
-                    ? "bg-emerald-500/20 text-emerald-400"
-                    : isCurrent
-                      ? "bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/50"
-                      : "bg-white/5 text-white/40"
-                )}
-              >
-                {isCompleted ? (
-                  <CheckCircle className="w-3 h-3" />
-                ) : isCurrent ? (
-                  <motion.div
-                    className="w-2 h-2 rounded-full bg-indigo-400"
-                    animate={{ scale: [1, 1.3, 1] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                  />
-                ) : (
-                  <Circle className="w-3 h-3" />
-                )}
-                <span className="hidden sm:inline">{gap.skill}</span>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
+                  return (
+                    <motion.button
+                      key={gap.skill}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: index * 0.02 }}
+                      className={cn(
+                        "flex items-center justify-center flex-shrink-0 rounded-full transition-all min-w-[32px] min-h-[32px]",
+                        isCompleted
+                          ? "bg-emerald-500/20"
+                          : isCurrent
+                            ? "bg-indigo-500/20 ring-2 ring-indigo-500/50"
+                            : "bg-white/5"
+                      )}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle className="w-4 h-4 text-emerald-400" />
+                      ) : isCurrent ? (
+                        <motion.div
+                          className="w-3 h-3 rounded-full bg-indigo-400"
+                          animate={{ scale: [1, 1.3, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        />
+                      ) : (
+                        <Circle className="w-4 h-4 text-white/40" />
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
       {/* Skip All Modal */}
       <AnimatePresence>
@@ -298,18 +347,28 @@ export function ChatInterface({
       </AnimatePresence>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-3"
+      >
         <AnimatePresence>
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
+          {messages.map((message, index) => (
+            <MessageBubble
+              key={message.id}
+              message={message}
+              showTimestamp={
+                index === 0 ||
+                (message.timestamp - messages[index - 1].timestamp > 5 * 60 * 1000)
+              }
+            />
           ))}
         </AnimatePresence>
         {isTyping && <TypingIndicator />}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="border-t border-white/10 bg-white/[0.02] p-4">
+      {/* Floating Input Area */}
+      <div className="sticky bottom-0 border-t border-white/10 bg-black/90 backdrop-blur-xl p-3 pb-[max(12px,env(safe-area-inset-bottom))]">
         {isComplete ? (
           /* Completion State */
           <motion.div
@@ -317,125 +376,108 @@ export function ChatInterface({
             animate={{ opacity: 1, y: 0 }}
             className="text-center py-2"
           >
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/25">
-              <Check className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/25">
+              <Check className="w-6 h-6 text-white" />
             </div>
-            <h4 className="text-lg font-bold text-white mb-1">
+            <h4 className="text-base font-bold text-white mb-1">
               Strategies validees !
             </h4>
-            <p className="text-sm text-white/50 mb-4">
+            <p className="text-xs text-white/50 mb-3">
               {strategies.length} strategie{strategies.length > 1 ? "s" : ""} prete{strategies.length > 1 ? "s" : ""} pour vos documents
             </p>
-            <button onClick={onComplete} className="btn-primary py-3 px-8">
+            <button onClick={onComplete} className="btn-primary py-3 px-6 w-full">
               <Sparkles className="w-5 h-5" />
               Generer mes documents
               <ArrowRight className="w-5 h-5" />
             </button>
           </motion.div>
         ) : (
-          /* Active Chat Input */
-          <div className="space-y-3">
-            {/* VALIDATOR MODE: Action Buttons */}
+          /* Active Chat Input - Mobile-First Floating Design */
+          <div className="space-y-2">
             <AnimatePresence mode="wait">
               {suggestedReplies.length > 0 && !showCustomInput && !isTyping && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="space-y-3"
+                  className="space-y-2"
                 >
                   {/* Mini Celebration */}
-                  <div className="flex justify-center">
-                    <MiniCelebration isVisible={showMiniCelebration} message="Valide !" />
-                  </div>
+                  <AnimatePresence>
+                    {showMiniCelebration && (
+                      <div className="flex justify-center">
+                        <MiniCelebration isVisible={showMiniCelebration} message="Valide !" />
+                      </div>
+                    )}
+                  </AnimatePresence>
 
-                  {/* Validator Mode Header */}
-                  {!showMiniCelebration && (
-                    <div className="flex items-center gap-2">
-                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-                      <span className="text-xs text-indigo-400 font-medium px-2">Validez en 1 clic</span>
-                      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-                    </div>
+                  {/* Primary Action - Full width */}
+                  {suggestedReplies[0] && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleSuggestionClick(suggestedReplies[0])}
+                      disabled={isSending}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-[15px] font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/25 active:shadow-emerald-500/40 transition-all disabled:opacity-50"
+                    >
+                      <Check className="w-5 h-5" />
+                      {suggestedReplies[0].label}
+                    </motion.button>
                   )}
 
-                  {/* Primary Action: Parfait button (larger, prominent) */}
-                  <div className="flex flex-col gap-2">
-                    {suggestedReplies[0] && (
+                  {/* Secondary Actions - Horizontal scrollable chips (WhatsApp style) */}
+                  <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
+                    {suggestedReplies.slice(1).map((suggestion, index) => (
                       <motion.button
-                        initial={{ opacity: 0, scale: 0.95 }}
+                        key={suggestion.id}
+                        initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        onClick={() => handleSuggestionClick(suggestedReplies[0])}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ delay: (index + 1) * 0.03 }}
+                        onClick={() => handleSuggestionClick(suggestion)}
                         disabled={isSending}
-                        className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-xl text-base font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all disabled:opacity-50"
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium border whitespace-nowrap flex-shrink-0 transition-all disabled:opacity-50 active:scale-95",
+                          getSuggestionStyle(suggestion.type)
+                        )}
                       >
-                        <Check className="w-5 h-5" />
-                        {suggestedReplies[0].label}
+                        {getSuggestionIcon(suggestion.type)}
+                        {suggestion.label}
+                      </motion.button>
+                    ))}
+                    {onSkipGap && (
+                      <motion.button
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        whileTap={{ scale: 0.95 }}
+                        transition={{ delay: 0.1 }}
+                        onClick={async () => {
+                          setIsSending(true);
+                          try {
+                            await onSkipGap();
+                          } finally {
+                            setIsSending(false);
+                          }
+                        }}
+                        disabled={isSending}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium border whitespace-nowrap flex-shrink-0 bg-white/5 border-white/20 text-white/50 hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-300 transition-all disabled:opacity-50 active:scale-95"
+                      >
+                        <SkipForward className="w-3.5 h-3.5" />
+                        Passer
                       </motion.button>
                     )}
-
-                    {/* Secondary Actions */}
-                    <div className="flex gap-2">
-                      {suggestedReplies.slice(1).map((suggestion, index) => (
-                        <motion.button
-                          key={suggestion.id}
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: (index + 1) * 0.05 }}
-                          onClick={() => handleSuggestionClick(suggestion)}
-                          disabled={isSending}
-                          className={cn(
-                            "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all disabled:opacity-50",
-                            getSuggestionStyle(suggestion.type)
-                          )}
-                        >
-                          {getSuggestionIcon(suggestion.type)}
-                          {suggestion.label}
-                        </motion.button>
-                      ))}
-                      {onSkipGap && (
-                        <motion.button
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.15 }}
-                          onClick={async () => {
-                            setIsSending(true);
-                            try {
-                              await onSkipGap();
-                            } finally {
-                              setIsSending(false);
-                            }
-                          }}
-                          disabled={isSending}
-                          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border bg-white/5 border-white/20 text-white/50 hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-300 transition-all disabled:opacity-50"
-                        >
-                          <SkipForward className="w-3.5 h-3.5" />
-                          Passer
-                        </motion.button>
-                      )}
-                    </div>
-
-                    {/* Custom input toggle */}
-                    <button
-                      onClick={() => {
-                        setShowCustomInput(true);
-                        setTimeout(() => textareaRef.current?.focus(), 100);
-                      }}
-                      className="text-xs text-white/40 hover:text-white/60 transition-colors flex items-center justify-center gap-1 py-1"
-                    >
-                      <PenLine className="w-3 h-3" />
-                      Ecrire une reponse personnalisee
-                    </button>
                   </div>
                 </motion.div>
               )}
 
-              {/* Custom Input */}
+              {/* Custom Text Input - Pill-shaped floating design */}
               {(showCustomInput || suggestedReplies.length === 0 || isTyping) && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="flex gap-2"
+                  className="flex items-end gap-2"
                 >
                   <div className="flex-1 relative">
                     <textarea
@@ -444,35 +486,60 @@ export function ChatInterface({
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder="Tapez votre reponse..."
-                      className="input-modern w-full min-h-[52px] resize-none py-3 pr-4"
+                      className="w-full min-h-[44px] max-h-[120px] resize-none py-3 px-4 rounded-[22px] bg-white/5 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent text-[15px]"
                       disabled={isSending || isTyping}
                       rows={1}
                     />
                   </div>
-                  <button
+                  <motion.button
                     onClick={handleSubmit}
                     disabled={!input.trim() || isSending || isTyping}
-                    className="btn-primary w-13 h-[52px] rounded-xl flex-shrink-0 disabled:opacity-50"
+                    animate={{
+                      scale: input.trim() ? [1, 1.05, 1] : 1,
+                    }}
+                    transition={{
+                      scale: { duration: 0.3, repeat: input.trim() ? Infinity : 0, repeatDelay: 2 }
+                    }}
+                    className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all",
+                      input.trim()
+                        ? "bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25"
+                        : "bg-white/10",
+                      "disabled:opacity-50"
+                    )}
                   >
                     {isSending ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="w-5 h-5 text-white animate-spin" />
                     ) : (
-                      <Send className="w-5 h-5" />
+                      <Send className={cn("w-5 h-5", input.trim() ? "text-white" : "text-white/40")} />
                     )}
-                  </button>
+                  </motion.button>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Back to validator mode */}
-            {showCustomInput && suggestedReplies.length > 0 && (
-              <button
-                onClick={() => setShowCustomInput(false)}
-                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center justify-center gap-1"
-              >
-                ← Revenir aux options de validation
-              </button>
-            )}
+            {/* Toggle between modes */}
+            <div className="flex justify-center">
+              {showCustomInput && suggestedReplies.length > 0 ? (
+                <button
+                  onClick={() => setShowCustomInput(false)}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1 py-1"
+                >
+                  ← Options rapides
+                </button>
+              ) : suggestedReplies.length > 0 && !showCustomInput && !isTyping && (
+                <button
+                  onClick={() => {
+                    setShowCustomInput(true);
+                    setTimeout(() => textareaRef.current?.focus(), 100);
+                  }}
+                  className="text-xs text-white/40 hover:text-white/60 transition-colors flex items-center gap-1 py-1"
+                >
+                  <PenLine className="w-3 h-3" />
+                  Personnaliser
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

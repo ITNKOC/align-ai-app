@@ -301,6 +301,267 @@ export async function updateCVData(
   }
 }
 
+// ==================== UPDATE EXPERIENCE ====================
+
+export type SectionType = "experiences" | "projects" | "education";
+
+/**
+ * Update a single item in a profile section (experience, project, or education).
+ */
+export async function updateProfileItem<T>(
+  section: SectionType,
+  index: number,
+  updates: Partial<T>
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Non authentifie" };
+    }
+
+    const profile = await prisma.masterProfile.findFirst({
+      where: {
+        userId: session.id,
+        isDefault: true,
+      },
+    });
+
+    if (!profile) {
+      return { success: false, error: "Profil non trouve" };
+    }
+
+    const currentData = profile.structuredData as unknown as CVData;
+    const sectionData = [...(currentData[section] || [])];
+
+    if (index < 0 || index >= sectionData.length) {
+      return { success: false, error: "Index invalide" };
+    }
+
+    // Merge updates with existing item
+    sectionData[index] = { ...sectionData[index], ...updates };
+
+    const updatedData: CVData = {
+      ...currentData,
+      [section]: sectionData,
+    };
+
+    await prisma.masterProfile.update({
+      where: { id: profile.id },
+      data: {
+        structuredData: updatedData as object,
+        updatedAt: new Date(),
+      },
+    });
+
+    console.log('[PROFILE_UPDATE]', {
+      section,
+      index,
+      timestamp: new Date().toISOString(),
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[PROFILE_UPDATE_ERROR]", {
+      section,
+      index,
+      error,
+      timestamp: new Date().toISOString(),
+    });
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erreur lors de la mise a jour",
+    };
+  }
+}
+
+/**
+ * Add a new item to a profile section.
+ */
+export async function addProfileItem<T>(
+  section: SectionType,
+  item: T
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Non authentifie" };
+    }
+
+    const profile = await prisma.masterProfile.findFirst({
+      where: {
+        userId: session.id,
+        isDefault: true,
+      },
+    });
+
+    if (!profile) {
+      return { success: false, error: "Profil non trouve" };
+    }
+
+    const currentData = profile.structuredData as unknown as CVData;
+    const sectionData = [...(currentData[section] || []), item];
+
+    const updatedData: CVData = {
+      ...currentData,
+      [section]: sectionData,
+    };
+
+    await prisma.masterProfile.update({
+      where: { id: profile.id },
+      data: {
+        structuredData: updatedData as object,
+        updatedAt: new Date(),
+      },
+    });
+
+    console.log('[PROFILE_ADD]', {
+      section,
+      timestamp: new Date().toISOString(),
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[PROFILE_ADD_ERROR]", {
+      section,
+      error,
+      timestamp: new Date().toISOString(),
+    });
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erreur lors de l'ajout",
+    };
+  }
+}
+
+/**
+ * Delete an item from a profile section.
+ */
+export async function deleteProfileItem(
+  section: SectionType,
+  index: number
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Non authentifie" };
+    }
+
+    const profile = await prisma.masterProfile.findFirst({
+      where: {
+        userId: session.id,
+        isDefault: true,
+      },
+    });
+
+    if (!profile) {
+      return { success: false, error: "Profil non trouve" };
+    }
+
+    const currentData = profile.structuredData as unknown as CVData;
+    const sectionData = [...(currentData[section] || [])];
+
+    if (index < 0 || index >= sectionData.length) {
+      return { success: false, error: "Index invalide" };
+    }
+
+    // Remove item at index
+    sectionData.splice(index, 1);
+
+    const updatedData: CVData = {
+      ...currentData,
+      [section]: sectionData,
+    };
+
+    await prisma.masterProfile.update({
+      where: { id: profile.id },
+      data: {
+        structuredData: updatedData as object,
+        updatedAt: new Date(),
+      },
+    });
+
+    console.log('[PROFILE_DELETE]', {
+      section,
+      index,
+      timestamp: new Date().toISOString(),
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[PROFILE_DELETE_ERROR]", {
+      section,
+      index,
+      error,
+      timestamp: new Date().toISOString(),
+    });
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erreur lors de la suppression",
+    };
+  }
+}
+
+// ==================== UPDATE SKILLS ====================
+
+/**
+ * Update the skills section of the user's CV data.
+ */
+export async function updateSkills(
+  newSkills: CVData["skills"]
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Non authentifie" };
+    }
+
+    const profile = await prisma.masterProfile.findFirst({
+      where: {
+        userId: session.id,
+        isDefault: true,
+      },
+    });
+
+    if (!profile) {
+      return { success: false, error: "Profil non trouve" };
+    }
+
+    const currentData = profile.structuredData as unknown as CVData;
+    const updatedData: CVData = {
+      ...currentData,
+      skills: newSkills,
+    };
+
+    await prisma.masterProfile.update({
+      where: { id: profile.id },
+      data: {
+        structuredData: updatedData as object,
+        updatedAt: new Date(),
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Update skills error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erreur lors de la mise a jour",
+    };
+  }
+}
+
 // ==================== LEARNED GAPS (Progressive Intelligence) ====================
 
 /**

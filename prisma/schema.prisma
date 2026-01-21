@@ -72,6 +72,9 @@ model JobOffer {
   // Analysis
   analysisResult  Json?         // AnalysisResult with all gaps
 
+  // Language Detection (Story 5.7)
+  detectedLanguage String?      // 'fr' | 'en' - Detected from rawText
+
   // Metadata
   createdAt       DateTime      @default(now())
 

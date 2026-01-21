@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Loader2, CheckCircle2, XCircle, Download, RefreshCw, FileText } from "lucide-react";
-import { getInterviewPrepStatus, resetInterviewPrep, downloadInterviewPrepPdf, downloadInterviewPrepLatex, type PrepStatus } from "@/actions/interview-prep-actions";
+import { Loader2, CheckCircle2, XCircle, RefreshCw, FileText } from "lucide-react";
+import { getInterviewPrepStatus, resetInterviewPrep, downloadInterviewPrepLatex, type PrepStatus } from "@/actions/interview-prep-actions";
 import { pulseScale, fadeIn, buttonHover } from "@/lib/animations";
 
 interface InterviewPrepProgressProps {
@@ -45,11 +45,9 @@ export function InterviewPrepProgress({
   onStatusChange,
 }: InterviewPrepProgressProps) {
   const [status, setStatus] = useState<PrepStatus>(initialStatus);
-  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [hasLatexFallback, setHasLatexFallback] = useState(false);
 
   // Poll for status updates when generating (AC3 - polling every 2 seconds)
   const checkStatus = useCallback(async () => {
@@ -59,16 +57,8 @@ export function InterviewPrepProgress({
       const newStatus = result.status || "pending";
       setStatus(newStatus);
 
-      if (result.pdfBase64) {
-        setPdfBase64(result.pdfBase64);
-      }
-
       if (result.error) {
         setError(result.error);
-        // If status is failed but we might have LaTeX, set the fallback flag
-        if (newStatus === "failed") {
-          setHasLatexFallback(true);
-        }
       }
 
       onStatusChange?.(newStatus);
@@ -92,25 +82,6 @@ export function InterviewPrepProgress({
       }
     };
   }, [status, checkStatus]);
-
-  const handleDownloadPdf = async () => {
-    if (isDownloading) return;
-    setIsDownloading(true);
-
-    try {
-      const result = await downloadInterviewPrepPdf(applicationId);
-      if (result.success && result.pdfBase64) {
-        const link = document.createElement("a");
-        link.href = `data:application/pdf;base64,${result.pdfBase64}`;
-        link.download = result.filename || "preparation-entretien.pdf";
-        link.click();
-      }
-    } catch (err) {
-      console.error("Download PDF error:", err);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
 
   const handleDownloadLatex = async () => {
     if (isDownloading) return;
@@ -140,7 +111,6 @@ export function InterviewPrepProgress({
 
     if (result.success) {
       setStatus("pending");
-      setPdfBase64(null);
       setError(null);
       onStatusChange?.("pending");
     }
@@ -220,26 +190,13 @@ export function InterviewPrepProgress({
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          {/* Download PDF button - shown when ready */}
+          {/* Download LaTeX button - shown when ready */}
           {status === "ready" && (
-            <motion.button
-              {...buttonHover}
-              onClick={handleDownloadPdf}
-              disabled={isDownloading}
-              className="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 text-sm font-medium hover:bg-green-500/30 transition-colors flex items-center gap-2 disabled:opacity-50"
-            >
-              <Download className={`h-4 w-4 ${isDownloading ? "animate-pulse" : ""}`} />
-              Telecharger PDF
-            </motion.button>
-          )}
-
-          {/* Download LaTeX fallback button - shown when failed (AC3) */}
-          {status === "failed" && hasLatexFallback && (
             <motion.button
               {...buttonHover}
               onClick={handleDownloadLatex}
               disabled={isDownloading}
-              className="px-4 py-2 rounded-lg bg-amber-500/20 text-amber-400 text-sm font-medium hover:bg-amber-500/30 transition-colors flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 text-sm font-medium hover:bg-green-500/30 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               <FileText className={`h-4 w-4 ${isDownloading ? "animate-pulse" : ""}`} />
               Telecharger LaTeX

@@ -3,13 +3,15 @@
 // ============================================
 // ALIGN.AI - Analysis Actions v2.0
 // No gap limit - Full analysis with prioritization
+// Story 5.7: Language detection integration
 // ============================================
 
 import { prisma } from "@/lib/db";
 import { generateJSON } from "@/lib/gemini";
 import { getJobAnalysisPrompt } from "@/lib/prompts";
-import type { CVData, AnalysisResult, GapAnalysis, LearnedGap } from "@/lib/types";
+import type { CVData, AnalysisResult, GapAnalysis, LearnedGap, SupportedLanguage } from "@/lib/types";
 import { findMatchingLearnedGaps } from "./profile-actions";
+import { detectLanguage } from "@/lib/language-detector";
 
 // ==================== TYPES ====================
 
@@ -18,6 +20,7 @@ export interface AnalysisActionResult {
   jobOfferId?: string;
   applicationId?: string;
   analysisResult?: AnalysisResult;
+  detectedLanguage?: SupportedLanguage;
   error?: string;
 }
 
@@ -94,6 +97,12 @@ export async function analyzeJobOffer(
 
     const cvData = profile.structuredData as unknown as CVData;
 
+    // Story 5.7: Detect language of the job offer
+    const languageResult = await detectLanguage(jobDescription);
+    console.log(
+      `[Analysis] Language detected: ${languageResult.language} (${Math.round(languageResult.confidence * 100)}% confidence, method: ${languageResult.method})`
+    );
+
     // Use Gemini to analyze the match - NO LIMIT on gaps
     const prompt = getJobAnalysisPrompt(cvData, jobDescription);
     const rawResult = await generateJSON<AnalysisResult>(prompt);
@@ -124,7 +133,7 @@ export async function analyzeJobOffer(
     console.log(`[Analysis] Moderate: ${gapsByPriority.moderate.length}`);
     console.log(`[Analysis] Minor: ${gapsByPriority.minor.length}`);
 
-    // Create JobOffer record
+    // Create JobOffer record with detected language (Story 5.7)
     const jobOffer = await prisma.jobOffer.create({
       data: {
         masterProfileId: profileId,
@@ -134,6 +143,7 @@ export async function analyzeJobOffer(
         company: analysisResult.company,
         requiredSkills: analysisResult.keywords,
         analysisResult: analysisResult as object,
+        detectedLanguage: languageResult.language, // Story 5.7
       },
     });
 
@@ -154,6 +164,7 @@ export async function analyzeJobOffer(
       jobOfferId: jobOffer.id,
       applicationId: application.id,
       analysisResult,
+      detectedLanguage: languageResult.language, // Story 5.7
     };
   } catch (error) {
     console.error("Analysis error:", error);
@@ -448,6 +459,63 @@ export async function checkAutoResolvableGaps(
       success: false,
       error:
         error instanceof Error ? error.message : "Une erreur est survenue",
+    };
+  }
+}
+
+// ==================== LANGUAGE MANAGEMENT (Story 5.7) ====================
+
+/**
+ * Update the detected language for a job offer
+ * Used when user manually overrides the auto-detected language
+ */
+export async function updateJobOfferLanguage(
+  jobOfferId: string,
+  language: SupportedLanguage
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await prisma.jobOffer.update({
+      where: { id: jobOfferId },
+      data: { detectedLanguage: language },
+    });
+
+    console.log(`[Analysis] Language updated to ${language} for job offer ${jobOfferId}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Update language error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erreur lors de la mise a jour de la langue",
+    };
+  }
+}
+
+/**
+ * Get the detected language for a job offer
+ */
+export async function getJobOfferLanguage(
+  jobOfferId: string
+): Promise<{ success: boolean; language?: SupportedLanguage; error?: string }> {
+  try {
+    const jobOffer = await prisma.jobOffer.findUnique({
+      where: { id: jobOfferId },
+      select: { detectedLanguage: true },
+    });
+
+    if (!jobOffer) {
+      return { success: false, error: "Offre non trouvee" };
+    }
+
+    return {
+      success: true,
+      language: (jobOffer.detectedLanguage as SupportedLanguage) || "fr",
+    };
+  } catch (error) {
+    console.error("Get language error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erreur lors de la recuperation de la langue",
     };
   }
 }

@@ -1,0 +1,120 @@
+% ============================================
+% ALIGN.AI CV TEMPLATE v1.0
+% ATS-Friendly, Minimalist, Single-Column
+% Story 5.8: LaTeX Template Optimization
+% ============================================
+
+\documentclass[10pt,a4paper]{article}
+
+% ============================================
+% PACKAGES
+% ============================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1.8cm]{geometry}
+\usepackage{fontawesome5}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+
+% ============================================
+% COLORS (ATS-safe: primary used only for section rules)
+% ============================================
+\definecolor{primary}{HTML}{4f46e5}
+\definecolor{text}{HTML}{1f2937}
+\definecolor{muted}{HTML}{6b7280}
+
+% ============================================
+% SECTION FORMATTING
+% ============================================
+\titleformat{\section}
+  {\Large\bfseries\color{primary}}{}{0em}{}[\titlerule]
+\titlespacing*{\section}{0pt}{12pt}{6pt}
+
+\titleformat{\subsection}
+  {\large\bfseries}{}{0em}{}
+\titlespacing*{\subsection}{0pt}{8pt}{4pt}
+
+% ============================================
+% CUSTOM COMMANDS
+% ============================================
+
+% Keyword highlighting for job-matched skills
+\newcommand{\keyword}[1]{\textbf{#1}}
+
+% Job/Experience header: {Title}{Company}{Location}{Dates}
+\newcommand{\jobheader}[4]{%
+  \noindent\textbf{#1} \hfill \small\color{muted}#2\\
+  \textit{#3} \hfill \small\color{muted}#4%
+  \vspace{4pt}%
+}
+
+% Project header: {Name}{Technologies}{Date}
+\newcommand{\projectheader}[3]{%
+  \noindent\textbf{#1} \hfill \small\color{muted}#3\\
+  \textit{Technologies: #2}%
+  \vspace{4pt}%
+}
+
+% Education header: {Degree}{Institution}{Dates}
+\newcommand{\educationheader}[3]{%
+  \noindent\textbf{#1}\\
+  \textit{#2} \hfill \small\color{muted}#3%
+  \vspace{4pt}%
+}
+
+% ============================================
+% LIST FORMATTING
+% ============================================
+\setlist[itemize]{leftmargin=*, itemsep=2pt, parsep=0pt}
+
+% ============================================
+% HYPERLINK SETUP
+% ============================================
+\hypersetup{
+  colorlinks=true,
+  linkcolor=primary,
+  urlcolor=primary,
+  pdfborder={0 0 0}
+}
+
+% ============================================
+% PAGE SETUP
+% ============================================
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+% ============================================
+% DOCUMENT
+% ============================================
+\begin{document}
+
+% Header with contact info
+\begin{center}
+  {\Huge\bfseries {{NAME}}}\\[6pt]
+  \small
+  {{CONTACT_LINE}}
+\end{center}
+
+\vspace{8pt}
+
+% Why Me section
+{{WHY_ME_SECTION}}
+
+% Skills section
+{{SKILLS_SECTION}}
+
+% Experience section
+{{EXPERIENCE_SECTION}}
+
+% Projects section
+{{PROJECTS_SECTION}}
+
+% Education section
+{{EDUCATION_SECTION}}
+
+% Languages section (if applicable)
+{{LANGUAGES_SECTION}}
+
+\end{document}

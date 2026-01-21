@@ -59,11 +59,17 @@ export default function UploadPage() {
     checkAuth();
   }, [router]);
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
       if (file.type !== "application/pdf") {
         toast.error("Seuls les fichiers PDF sont acceptes");
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error("Le fichier ne doit pas depasser 10 Mo");
         return;
       }
       setSelectedFile(file);
@@ -73,6 +79,7 @@ export default function UploadPage() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { "application/pdf": [".pdf"] },
+    maxSize: MAX_FILE_SIZE,
     maxFiles: 1,
     disabled: isUploading,
   });

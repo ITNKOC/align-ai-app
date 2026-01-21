@@ -27,9 +27,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased overflow-x-hidden`}
       >
         <Providers>
           <main className="min-h-screen">{children}</main>

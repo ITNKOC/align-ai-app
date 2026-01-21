@@ -1,2 +1,9 @@
 export { CoverageGauge } from "./coverage-gauge";
 export { TopSkillsList } from "./top-skills-list";
+export { SkillsManager } from "./skills-manager";
+export { LearnedSkillsSection } from "./learned-skills-section";
+export { EditableField } from "./EditableField";
+export { ProfileSection } from "./ProfileSection";
+export { ExperienceList } from "./ExperienceList";
+export { ProjectList } from "./ProjectList";
+export { EducationList } from "./EducationList";

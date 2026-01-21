@@ -10,13 +10,20 @@ import {
   Plus,
   LogOut,
   ChevronDown,
-  Home,
-  FileText,
   User,
   UserCircle,
 } from "lucide-react";
 import { getSession, logout } from "@/actions/auth-actions";
-import { dropdownMenu } from "@/lib/animations";
+import {
+  dropdownMenu,
+  navbarEnter,
+  navLinkHover,
+  logoHover,
+  navButtonGlow,
+  dropdownItemVariants,
+  bottomNavItem,
+} from "@/lib/animations";
+import { ThemeToggle } from "./theme-toggle";
 
 interface AppNavbarProps {
   showAuth?: boolean;
@@ -57,59 +64,96 @@ export function AppNavbar({ showAuth = true }: AppNavbarProps) {
   return (
     <>
       {/* Top Navigation */}
-      <nav className="navbar">
+      <motion.nav
+        className="navbar"
+        variants={navbarEnter}
+        initial="initial"
+        animate="animate"
+      >
         <div className="container-app">
           <div className="navbar-inner">
             {/* Logo */}
-            <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-lg font-bold text-white hidden sm:block">Align.ai</span>
+            <Link href={user ? "/dashboard" : "/"}>
+              <motion.div
+                className="flex items-center gap-2.5"
+                {...logoHover}
+              >
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-lg font-bold text-foreground hidden sm:block">
+                  Align.ai
+                </span>
+              </motion.div>
             </Link>
 
             {/* Right side */}
             <div className="flex items-center gap-2">
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
               {!isLoading && (
                 user ? (
                   <>
                     {/* Desktop nav links */}
-                    <div className="hidden md:flex items-center gap-1">
+                    <div className="hidden md:flex items-center gap-1 ml-2">
                       <Link href="/dashboard">
-                        <button className={`btn-ghost ${isActive("/dashboard") ? "text-white bg-white/5" : ""}`}>
+                        <motion.button
+                          className={`btn-ghost ${
+                            isActive("/dashboard")
+                              ? "text-foreground bg-primary/10"
+                              : ""
+                          }`}
+                          {...navLinkHover}
+                        >
                           <LayoutDashboard className="w-4 h-4" />
                           Dashboard
-                        </button>
+                        </motion.button>
                       </Link>
                       <Link href="/upload">
-                        <button className="btn-primary py-2 px-3">
+                        <motion.button
+                          className="btn-primary py-2 px-3"
+                          {...navButtonGlow}
+                        >
                           <Plus className="w-4 h-4" />
                           Nouvelle
-                        </button>
+                        </motion.button>
                       </Link>
                     </div>
 
                     {/* User menu */}
                     <div className="relative ml-2">
-                      <button
+                      <motion.button
                         onClick={() => setShowMenu(!showMenu)}
-                        className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                        className="flex items-center gap-2 p-1.5 rounded-lg
+                          hover:bg-primary/5 transition-colors duration-200
+                          border border-transparent hover:border-primary/10"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                       >
                         <div className="avatar avatar-sm">
                           {user.fullName.charAt(0).toUpperCase()}
                         </div>
-                        <span className="hidden sm:block text-sm text-white/70 max-w-[100px] truncate">
+                        <span className="hidden sm:block text-sm text-muted-foreground max-w-[100px] truncate">
                           {user.fullName.split(" ")[0]}
                         </span>
-                        <ChevronDown className="w-4 h-4 text-white/40" />
-                      </button>
+                        <motion.div
+                          animate={{ rotate: showMenu ? 180 : 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        </motion.div>
+                      </motion.button>
 
                       <AnimatePresence>
                         {showMenu && (
                           <>
-                            <div
+                            <motion.div
                               className="fixed inset-0 z-40"
                               onClick={() => setShowMenu(false)}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
                             />
                             <motion.div
                               variants={dropdownMenu}
@@ -118,29 +162,43 @@ export function AppNavbar({ showAuth = true }: AppNavbarProps) {
                               exit="exit"
                               className="dropdown-menu z-50"
                             >
-                              <div className="px-3 py-2.5 border-b border-white/10">
-                                <p className="text-sm font-medium text-white truncate">
+                              <div className="px-3 py-2.5 border-b border-border">
+                                <p className="text-sm font-medium text-foreground truncate">
                                   {user.fullName}
                                 </p>
-                                <p className="text-xs text-white/50 truncate">
+                                <p className="text-xs text-muted-foreground truncate">
                                   {user.email}
                                 </p>
                               </div>
-                              <Link
-                                href="/profile"
-                                onClick={() => setShowMenu(false)}
-                                className="dropdown-item"
+                              <motion.div
+                                variants={dropdownItemVariants}
+                                initial="initial"
+                                animate="animate"
+                                custom={0}
                               >
-                                <UserCircle className="w-4 h-4" />
-                                Mon Profil
-                              </Link>
-                              <button
-                                onClick={handleLogout}
-                                className="dropdown-item text-red-400 hover:text-red-300"
+                                <Link
+                                  href="/profile"
+                                  onClick={() => setShowMenu(false)}
+                                  className="dropdown-item"
+                                >
+                                  <UserCircle className="w-4 h-4" />
+                                  Mon Profil
+                                </Link>
+                              </motion.div>
+                              <motion.div
+                                variants={dropdownItemVariants}
+                                initial="initial"
+                                animate="animate"
+                                custom={1}
                               >
-                                <LogOut className="w-4 h-4" />
-                                Se deconnecter
-                              </button>
+                                <button
+                                  onClick={handleLogout}
+                                  className="dropdown-item text-red-500 hover:text-red-400 dark:text-red-400 dark:hover:text-red-300"
+                                >
+                                  <LogOut className="w-4 h-4" />
+                                  Se deconnecter
+                                </button>
+                              </motion.div>
                             </motion.div>
                           </>
                         )}
@@ -150,10 +208,20 @@ export function AppNavbar({ showAuth = true }: AppNavbarProps) {
                 ) : (
                   <div className="flex items-center gap-2">
                     <Link href="/login">
-                      <button className="btn-ghost">Connexion</button>
+                      <motion.button
+                        className="btn-ghost"
+                        {...navLinkHover}
+                      >
+                        Connexion
+                      </motion.button>
                     </Link>
                     <Link href="/register">
-                      <button className="btn-primary py-2 px-4">S&apos;inscrire</button>
+                      <motion.button
+                        className="btn-primary py-2 px-4"
+                        {...navButtonGlow}
+                      >
+                        S&apos;inscrire
+                      </motion.button>
                     </Link>
                   </div>
                 )
@@ -161,24 +229,51 @@ export function AppNavbar({ showAuth = true }: AppNavbarProps) {
             </div>
           </div>
         </div>
-      </nav>
+      </motion.nav>
 
       {/* Mobile Bottom Navigation - Only for logged in users */}
       {user && (
-        <div className="bottom-nav">
-          <Link href="/dashboard" className={`bottom-nav-item ${isActive("/dashboard") ? "active" : ""}`}>
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
+        <motion.div
+          className="bottom-nav"
+          initial={{ y: 100 }}
+          animate={{ y: 0 }}
+          transition={{ delay: 0.2, duration: 0.3 }}
+        >
+          <Link href="/dashboard">
+            <motion.div
+              className={`bottom-nav-item ${isActive("/dashboard") ? "active" : ""}`}
+              {...bottomNavItem}
+            >
+              <LayoutDashboard className="w-5 h-5" />
+              <span>Dashboard</span>
+            </motion.div>
           </Link>
-          <Link href="/upload" className={`bottom-nav-item ${pathname.startsWith("/upload") || pathname.startsWith("/analyze") || pathname.startsWith("/chat") || pathname.startsWith("/generate") ? "active" : ""}`}>
-            <Plus className="w-5 h-5" />
-            <span>Nouveau</span>
+          <Link href="/upload">
+            <motion.div
+              className={`bottom-nav-item ${
+                pathname.startsWith("/upload") ||
+                pathname.startsWith("/analyze") ||
+                pathname.startsWith("/chat") ||
+                pathname.startsWith("/generate")
+                  ? "active"
+                  : ""
+              }`}
+              {...bottomNavItem}
+            >
+              <Plus className="w-5 h-5" />
+              <span>Nouveau</span>
+            </motion.div>
           </Link>
-          <Link href="/profile" className={`bottom-nav-item ${isActive("/profile") ? "active" : ""}`}>
-            <User className="w-5 h-5" />
-            <span>Profil</span>
+          <Link href="/profile">
+            <motion.div
+              className={`bottom-nav-item ${isActive("/profile") ? "active" : ""}`}
+              {...bottomNavItem}
+            >
+              <User className="w-5 h-5" />
+              <span>Profil</span>
+            </motion.div>
           </Link>
-        </div>
+        </motion.div>
       )}
     </>
   );

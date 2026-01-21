@@ -3,6 +3,8 @@
 // ============================================
 // ALIGN.AI - Generation Actions v2.0
 // CV + Cover Letter + Follow-up Email
+// Story 5.7: Multilingual document generation
+// Story 5.8: LaTeX Template Optimization
 // ============================================
 
 import { prisma } from "@/lib/db";
@@ -20,7 +22,16 @@ import type {
   Strategy,
   GapSlot,
   FollowUpEmail,
+  Skills,
+  SupportedLanguage,
 } from "@/lib/types";
+import { organizeSkillsForJob } from "@/lib/skill-matcher";
+// Story 5.8: LaTeX Template System
+import {
+  buildCVLatex,
+  loadCVTemplate,
+  escapeLatex,
+} from "@/lib/latex-template";
 
 // ==================== TYPES ====================
 
@@ -33,6 +44,150 @@ export interface GenerationResult {
   followUpEmail?: FollowUpEmail;
   error?: string;
   partialSuccess?: boolean;
+}
+
+// ==================== TEMPLATE CV GENERATION (Story 5.8) ====================
+
+/**
+ * Generate CV using the optimized ATS-friendly template system
+ * Story 5.8: LaTeX Template Optimization
+ */
+export async function generateCVFromTemplate(
+  cvData: CVData,
+  analysisResult: AnalysisResult,
+  gapSlots: GapSlot[],
+  language: SupportedLanguage = "fr"
+): Promise<string> {
+  // Build "Why Me" content from strategies and analysis
+  const whyMeContent = buildWhyMeContent(cvData, analysisResult, gapSlots, language);
+
+  // Build CV using the template system
+  const cvLatex = buildCVLatex(
+    cvData,
+    whyMeContent,
+    analysisResult.matchedSkills,
+    {
+      language,
+      maxExperiences: 4,
+      maxProjects: 3,
+    }
+  );
+
+  return cvLatex;
+}
+
+/**
+ * Build "Why Me" section content from analysis and strategies
+ */
+function buildWhyMeContent(
+  cvData: CVData,
+  analysisResult: AnalysisResult,
+  gapSlots: GapSlot[],
+  language: SupportedLanguage
+): string {
+  const years = calculateYearsOfExperience(cvData.experiences);
+  const topSkills = analysisResult.matchedSkills.slice(0, 4);
+  const mainDomain = extractMainDomain(cvData, analysisResult);
+
+  // Get filled strategies for unique value proposition
+  const filledStrategies = gapSlots
+    .filter(slot => slot.strategy && slot.strategy.approach !== "acknowledge_gap")
+    .slice(0, 2);
+
+  const lines: string[] = [];
+
+  if (language === "fr") {
+    // Line 1: Experience summary
+    if (years > 0) {
+      lines.push(`${years} ans d'expérience en ${mainDomain}.`);
+    }
+
+    // Line 2: Key matched skills
+    if (topSkills.length > 0) {
+      const skillsText = topSkills.map(s => `\\keyword{${escapeLatex(s)}}`).join(", ");
+      lines.push(`Expertise démontrée en ${skillsText}.`);
+    }
+
+    // Line 3: Unique value (from strategies or recent project)
+    if (filledStrategies.length > 0 && filledStrategies[0].strategy?.suggestedPhrasing) {
+      lines.push(filledStrategies[0].strategy.suggestedPhrasing);
+    } else if (cvData.projects.length > 0) {
+      const recentProject = cvData.projects[0];
+      lines.push(`Récemment: ${recentProject.name} (${recentProject.techStack.slice(0, 3).join(", ")}).`);
+    }
+  } else {
+    // English version
+    if (years > 0) {
+      lines.push(`${years} years of experience in ${mainDomain}.`);
+    }
+
+    if (topSkills.length > 0) {
+      const skillsText = topSkills.map(s => `\\keyword{${escapeLatex(s)}}`).join(", ");
+      lines.push(`Proven expertise in ${skillsText}.`);
+    }
+
+    if (filledStrategies.length > 0 && filledStrategies[0].strategy?.suggestedPhrasing) {
+      lines.push(filledStrategies[0].strategy.suggestedPhrasing);
+    } else if (cvData.projects.length > 0) {
+      const recentProject = cvData.projects[0];
+      lines.push(`Recently: ${recentProject.name} (${recentProject.techStack.slice(0, 3).join(", ")}).`);
+    }
+  }
+
+  return lines.join(" ");
+}
+
+/**
+ * Calculate approximate years of experience from CV
+ */
+function calculateYearsOfExperience(experiences: CVData["experiences"]): number {
+  if (!experiences || experiences.length === 0) return 0;
+
+  // Get earliest start year
+  const years = experiences
+    .map(exp => {
+      const match = exp.startDate.match(/(\d{4})/);
+      return match ? parseInt(match[1], 10) : null;
+    })
+    .filter((y): y is number => y !== null);
+
+  if (years.length === 0) return 0;
+
+  const earliestYear = Math.min(...years);
+  const currentYear = new Date().getFullYear();
+
+  return Math.max(0, currentYear - earliestYear);
+}
+
+/**
+ * Extract main domain/field from CV and job analysis
+ */
+function extractMainDomain(cvData: CVData, analysisResult: AnalysisResult): string {
+  // Try to get from job title
+  const jobTitle = analysisResult.jobTitle.toLowerCase();
+
+  if (jobTitle.includes("full") && jobTitle.includes("stack")) {
+    return "développement full-stack";
+  }
+  if (jobTitle.includes("frontend") || jobTitle.includes("front-end")) {
+    return "développement frontend";
+  }
+  if (jobTitle.includes("backend") || jobTitle.includes("back-end")) {
+    return "développement backend";
+  }
+  if (jobTitle.includes("data") || jobTitle.includes("ml") || jobTitle.includes("ia")) {
+    return "data science et IA";
+  }
+  if (jobTitle.includes("devops") || jobTitle.includes("sre")) {
+    return "DevOps et infrastructure";
+  }
+  if (jobTitle.includes("mobile") || jobTitle.includes("ios") || jobTitle.includes("android")) {
+    return "développement mobile";
+  }
+
+  // Default based on top skills
+  const topSkill = analysisResult.matchedSkills[0] || "développement logiciel";
+  return `développement ${topSkill}`;
 }
 
 // ==================== MAIN ACTIONS ====================
@@ -76,7 +231,22 @@ export async function generateDocuments(
     const gapSlots = application.gapSlots as unknown as GapSlot[];
     const jobDescription = application.jobOffer.rawText;
 
-    // Generate LaTeX documents using the new prompt with gapSlots
+    // Story 5.7: Get detected language for multilingual generation
+    const detectedLanguage = (application.jobOffer.detectedLanguage as SupportedLanguage) || "fr";
+    console.log(`[Generation] Document language: ${detectedLanguage}`);
+
+    // Story 5.6: Organize skills for job alignment
+    // This ensures matched skills appear first with proper \keyword{} emphasis
+    const organizedSkills = organizeSkillsForJob(
+      cvData.skills as Skills,
+      analysisResult
+    );
+    console.log("[Generation] Organized skills for job alignment:", {
+      matchedCategories: organizedSkills.matched.length,
+      otherSkillsCount: organizedSkills.other.length,
+    });
+
+    // Generate LaTeX documents using the new prompt with gapSlots and organized skills
     // Use current date as application date (date of document creation)
     const applicationDate = new Date();
     const documentPrompt = getDocumentGenerationPrompt(
@@ -84,7 +254,9 @@ export async function generateDocuments(
       analysisResult,
       gapSlots,
       jobDescription,
-      applicationDate
+      applicationDate,
+      organizedSkills,  // Story 5.6: Pass organized skills to prompt
+      detectedLanguage  // Story 5.7: Pass detected language for multilingual generation
     );
 
     console.log("[Generation] Generating LaTeX documents...");

@@ -10,8 +10,15 @@ import type {
   Strategy,
   GapAnalysis,
   CollectedProject,
+  OrganizedSkills,
+  SupportedLanguage,
 } from "./types";
 import { getVocabularyExamples } from "./vocabulary-helper";
+import {
+  CV_SECTION_HEADERS,
+  COVER_LETTER_HEADERS,
+  LANGUAGE_INSTRUCTIONS,
+} from "./constants";
 
 // ==================== PROMPT 1: CV EXTRACTION ====================
 
@@ -684,6 +691,63 @@ ${conversationHistory}
 IMPORTANT: Réponds UNIQUEMENT avec le JSON valide, sans markdown.`;
 }
 
+// ==================== HELPER: BUILD ORGANIZED SKILLS SECTION (Story 5.6) ====================
+
+/**
+ * Build the organized skills section for the document generation prompt
+ * This ensures skills are displayed in job-aligned order with proper \keyword{} emphasis
+ */
+function buildOrganizedSkillsSection(organizedSkills: OrganizedSkills): string {
+  if (!organizedSkills || (organizedSkills.matched.length === 0 && organizedSkills.other.length === 0)) {
+    return "";
+  }
+
+  let section = `## 🎯 COMPÉTENCES ORGANISÉES POUR LE CV (OBLIGATOIRE)
+**UTILISE CETTE STRUCTURE EXACTE pour la section "Competences Techniques":**
+
+`;
+
+  if (organizedSkills.matched.length > 0) {
+    section += `### Compétences alignées avec l'offre (PRIORITÉ MAXIMALE)
+**Ces catégories doivent apparaître EN PREMIER dans le CV, dans cet ordre exact:**
+
+`;
+
+    for (const { category, skills } of organizedSkills.matched) {
+      const skillStrings = skills.map(s => {
+        // Exact matches get \keyword{}, others don't
+        if (s.matchType === 'exact') {
+          return `\\\\keyword{${s.skill}}`;
+        } else if (s.matchType === 'synonym') {
+          return `\\\\keyword{${s.skill}}`;  // Synonyms also get emphasis
+        } else {
+          return s.skill;  // Partial matches are not emphasized
+        }
+      });
+      section += `- **${category}:** ${skillStrings.join(", ")}\n`;
+    }
+
+    section += `
+**RÈGLE CRITIQUE:** Dans le LaTeX, génère la section compétences EXACTEMENT comme ci-dessus:
+- Catégories de l'offre EN PREMIER
+- Compétences matchées avec \\keyword{}
+- Compétences partielles sans \\keyword{}
+
+`;
+  }
+
+  if (organizedSkills.other.length > 0) {
+    section += `### Autres compétences (section "Autres" EN DERNIER)
+Ces compétences n'apparaissent pas dans l'offre mais peuvent être utiles:
+${organizedSkills.other.join(", ")}
+
+**RÈGLE:** Ces compétences apparaissent APRÈS les catégories de l'offre, sans \\keyword{}.
+`;
+  }
+
+  return section;
+}
+
 // ==================== PROMPT 5: DOCUMENT GENERATION v4.0 (CV PARFAIT) ====================
 // Paradigme: MINIMISER LES RAISONS DE REJET > Maximiser le match
 // Features: Pourquoi Moi, Ordre Dynamique, Mapping Synonymes, ATS-Optimisé
@@ -693,17 +757,51 @@ export function getDocumentGenerationPrompt(
   analysisResult: AnalysisResult,
   gapSlots: GapSlot[],
   jobDescription: string,
-  applicationDate?: Date
+  applicationDate?: Date,
+  organizedSkills?: OrganizedSkills,
+  language: SupportedLanguage = "fr"
 ): string {
-  const candidateName = cvData.personalInfo.fullName || "Candidat";
+  const candidateName = cvData.personalInfo.fullName || (language === "fr" ? "Candidat" : "Candidate");
 
-  // Format the application date for the cover letter
+  // Format the application date for the cover letter based on language
   const dateObj = applicationDate || new Date();
-  const formattedDate = dateObj.toLocaleDateString("fr-FR", {
+  const formattedDate = dateObj.toLocaleDateString(language === "fr" ? "fr-FR" : "en-US", {
     day: "numeric",
     month: "long",
     year: "numeric"
   });
+
+  // Get language-specific headers and instructions
+  const cvHeaders = CV_SECTION_HEADERS[language];
+  const coverHeaders = COVER_LETTER_HEADERS[language];
+  const langInstructions = LANGUAGE_INSTRUCTIONS[language];
+
+  // Build language instruction block for the prompt
+  const languageBlock = `
+## LANGUE DU DOCUMENT: ${language === "fr" ? "FRANCAIS" : "ENGLISH"}
+**REGLES DE LANGUE OBLIGATOIRES:**
+- Tous les titres de section DOIVENT etre en ${language === "fr" ? "francais" : "anglais"}
+- Tout le contenu genere DOIT etre en ${language === "fr" ? "francais" : "anglais"}
+- ${langInstructions.tone}
+- ${langInstructions.formality}
+- ${langInstructions.culturalNotes}
+
+**TITRES DE SECTION CV:**
+- Section "Pourquoi Moi": "${cvHeaders.whyMe}"
+- Competences: "${cvHeaders.skills}"
+- Experience: "${cvHeaders.experience}"
+- Projets: "${cvHeaders.projects}"
+- Formation: "${cvHeaders.education}"
+- Langues: "${cvHeaders.languages}"
+
+**LETTRE DE MOTIVATION:**
+- Salutation: "${coverHeaders.greeting}"
+- Cloture: "${coverHeaders.closing}"
+- Objet: "${coverHeaders.subject}"
+`;
+
+  // Build organized skills section for the prompt (Story 5.6)
+  const organizedSkillsSection = organizedSkills ? buildOrganizedSkillsSection(organizedSkills) : "";
 
   // Build strategies summary from filled slots
   const strategiesSummary = gapSlots
@@ -748,16 +846,29 @@ MAPPING SYNONYMES ATS (utilise le terme de l'offre):
 
   return `Tu es un expert en rédaction de CV "chirurgicaux" — parfaitement ciblés pour MINIMISER LES RAISONS DE REJET.
 
-## 🎯 PARADIGME FONDAMENTAL: MINIMISER LE REJET
+${languageBlock}
 
-Les recruteurs passent 6 SECONDES sur un CV. Ils cherchent des RAISONS DE REJETER, pas des raisons d'embaucher.
+## 🎯 PARADIGME: CV PARFAIT - 1 PAGE, NOIR ET BLANC, SKILLS EN GRAS
 
-**Ton objectif:** Éliminer TOUTES les raisons de rejet:
-1. ❌ Gap visible → ✅ Comblé ou expliqué
-2. ❌ Doute sur les compétences → ✅ Preuves concrètes avec métriques
-3. ❌ Confusion sur le profil → ✅ "Pourquoi Moi" ultra-clair en 6 secondes
-4. ❌ Risque perçu → ✅ Expériences similaires au poste
-5. ❌ Bruit/infos non pertinentes → ✅ Tout est ciblé sur CETTE offre
+**RÈGLES CRITIQUES - À RESPECTER ABSOLUMENT:**
+1. ⚠️ **MAXIMUM 1 PAGE** - Le CV DOIT tenir sur 1 seule page A4
+2. ⚠️ **NOIR ET BLANC UNIQUEMENT** - Aucune couleur, aucun accent coloré
+3. ⚠️ **SKILLS DE L'OFFRE EN GRAS** - Utilise \\textbf{} pour CHAQUE compétence qui match l'offre
+4. ❌ JAMAIS de pourcentages inventés (30%, 50% d'amélioration)
+5. ❌ JAMAIS de métriques non fournies par le candidat
+
+**COMMENT METTRE EN VALEUR LES SKILLS DE L'OFFRE:**
+- Section Compétences: "\\textbf{React}, \\textbf{Node.js}, Python, \\textbf{Docker}"
+- Expériences: "Développé une API avec \\textbf{Node.js} et \\textbf{PostgreSQL}"
+- Projets: "[Projet] -- \\textbf{React}, \\textbf{TypeScript}, MongoDB"
+
+**POUR TENIR EN 1 PAGE (OBLIGATOIRE):**
+- Police 10pt, marges réduites (0.8cm top/bottom, 1.2cm left/right)
+- Seulement 2-3 expériences (les plus pertinentes pour l'offre)
+- Maximum 1-2 projets pertinents
+- Pas de section "Centres d'intérêt"
+- Descriptions courtes: 1-2 lignes max par bullet point
+- Pas de profil/résumé si ça ne tient pas
 
 ${keywordSynonyms}
 
@@ -776,6 +887,8 @@ ${jobDescription}
 - Mots-clés EXACTS de l'offre à utiliser: ${analysisResult.keywords.join(", ")}
 - Compétences matchées: ${analysisResult.matchedSkills.join(", ")}
 - Gaps identifiés: ${analysisResult.gaps.map(g => g.skill).join(", ")}
+
+${organizedSkillsSection}
 
 ## STRATÉGIES DÉFINIES POUR CHAQUE GAP
 ${strategiesSummary}
@@ -810,18 +923,23 @@ Critères de pertinence:
 - Secteur/domaine similaire
 - Métriques impressionnantes
 
-### ÉTAPE 3: Reformulation ATS
+### ÉTAPE 3: Rédaction des Expériences
 Pour CHAQUE bullet point:
-1. Identifie les mots-clés de l'offre qui peuvent s'appliquer
-2. Reformule en utilisant EXACTEMENT ces mots-clés
-3. Ajoute des métriques si disponibles (%, X utilisateurs, etc.)
-4. Structure: [Action] + [Technologie de l'offre] + [Résultat mesurable]
+1. Commence par un verbe d'action fort (Développé, Conçu, Implémenté, Optimisé)
+2. Décris concrètement ce qui a été fait
+3. Mentionne les technologies utilisées
+4. Décris l'impact en termes qualitatifs (PAS de % inventés)
+5. Structure: [Action] + [Ce qui a été fait] + [Technologies] + [Contexte/Impact]
 
-### ÉTAPE 4: Compétences Ciblées
-Liste les compétences dans cet ORDRE:
-1. Compétences EXACTEMENT demandées dans l'offre (en premier)
-2. Compétences proches/transférables
-3. Autres compétences pertinentes
+### ÉTAPE 4: Compétences Techniques
+Présente les compétences par catégories claires:
+1. Langages de programmation
+2. Frameworks et bibliothèques
+3. Bases de données
+4. Outils et DevOps
+5. Méthodologies
+
+PAS DE BARRES DE PROGRESSION. PAS DE POURCENTAGES DE MAÎTRISE. Juste des listes claires.
 
 ### 2. CoverLetter.tex
 Structure optimisée:
@@ -831,92 +949,121 @@ Structure optimisée:
 4. **Gaps comblés** (1 paragraphe): Pour les stratégies "fast_learner" ou "transferable"
 5. **Conclusion** (2 phrases): Motivation + disponibilité
 
-## TEMPLATE CV ATS-OPTIMISÉ (v4.0 - CV PARFAIT)
-% Format optimisé pour les systèmes ATS - pas d'icônes, pas de couleurs, single column
+## TEMPLATE CV PARFAIT (v8.0 - RÈGLE DES 6 SECONDES)
+% CV optimisé pour la règle des 6 secondes: le recruteur voit immédiatement POURQUOI embaucher ce candidat
+% Noir et blanc, 2 pages max, icones fontawesome, section "Pourquoi Moi" en premier
 \\documentclass[11pt,a4paper]{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage[T1]{fontenc}
-\\usepackage[top=1.2cm,bottom=1.2cm,left=1.8cm,right=1.8cm]{geometry}
+\\usepackage[french]{babel}
+\\usepackage[top=1.5cm,bottom=1.5cm,left=2cm,right=2cm]{geometry}
 \\usepackage{enumitem}
 \\usepackage{titlesec}
 \\usepackage{hyperref}
-\\usepackage{parskip}
+\\usepackage{fontawesome5}
+\\usepackage{xcolor}
+\\usepackage{tabularx}
 
-% Configuration ATS-friendly
+% Configuration minimaliste - NOIR ET BLANC uniquement
 \\hypersetup{colorlinks=false,pdfborder={0 0 0}}
 \\setlength{\\parindent}{0pt}
-\\setlength{\\parskip}{0.2em}
 \\pagestyle{empty}
 
-% Sections avec ligne simple
-\\titleformat{\\section}{\\large\\bfseries\\uppercase}{}{0em}{}[\\hrule]
-\\titlespacing*{\\section}{0pt}{12pt}{6pt}
+% Commande pour mettre en valeur les compétences de l'offre (GRAS)
+\\newcommand{\\keyword}[1]{\\textbf{#1}}
+
+% Commande pour les expériences professionnelles
+\\newcommand{\\jobheader}[4]{%
+  \\textbf{#1} \\hfill #2\\\\
+  \\textit{#3} \\hfill \\textit{#4}\\\\
+}
+
+% Format des sections avec ligne horizontale
+\\titleformat{\\section}{\\large\\bfseries\\scshape}{}{0em}{}[\\titlerule]
+\\titlespacing*{\\section}{0pt}{12pt}{8pt}
 
 \\begin{document}
 
 % ===== EN-TÊTE =====
 \\begin{center}
-{\\LARGE\\bfseries ${candidateName.toUpperCase()}}\\\\[4pt]
-{\\large ${analysisResult.jobTitle}}\\\\[6pt]
-${cvData.personalInfo.email || "email@exemple.com"} \\textbar{} ${cvData.personalInfo.phone || "+33 6 XX XX XX XX"} \\textbar{} ${cvData.personalInfo.location || "France"}\\\\
-${cvData.personalInfo.linkedinUrl ? cvData.personalInfo.linkedinUrl.replace("https://", "") : ""} ${cvData.personalInfo.githubUrl ? "\\textbar{} " + cvData.personalInfo.githubUrl.replace("https://", "") : ""}
+  {\\Huge\\bfseries ${candidateName.toUpperCase()}}\\\\[6pt]
+  {\\large [Titre aligné avec le poste visé]}\\\\[10pt]
+  \\begin{tabular}{c c c}
+    \\faPhone\\ ${cvData.personalInfo.phone || "+33 6 XX XX XX XX"} &
+    \\faEnvelope\\ ${cvData.personalInfo.email || "email@exemple.com"} &
+    \\faMapMarker*\\ ${cvData.personalInfo.location || "France"}
+  \\end{tabular}\\\\[4pt]
+  \\begin{tabular}{c c c}
+    ${cvData.personalInfo.linkedinUrl ? "\\faLinkedin\\ " + cvData.personalInfo.linkedinUrl.replace("https://www.", "").replace("https://", "") : ""} &
+    ${cvData.personalInfo.githubUrl ? "\\faGithub\\ " + cvData.personalInfo.githubUrl.replace("https://", "") : ""} &
+    ${cvData.personalInfo.portfolioUrl ? "\\faGlobe\\ " + cvData.personalInfo.portfolioUrl.replace("https://", "") : ""}
+  \\end{tabular}
 \\end{center}
 
-\\vspace{0.2cm}
+\\vspace{-6pt}
 
-% ===== POURQUOI MOI (SECTION CRITIQUE) =====
+% ===== SECTION CRITIQUE: POURQUOI MOI (6 SECONDES) =====
+% Cette section est lue EN PREMIER par le recruteur. Elle doit répondre immédiatement:
+% "Pourquoi ce candidat et pas un autre?"
 \\section{Pourquoi Moi}
-% Cette section doit convaincre en 6 SECONDES. 3-4 lignes MAX.
-% Structure: Années d'expérience + Expertise principale + Compétences clés de l'offre + Élément différenciant
-[GÉNÈRE ICI: Développeur avec X années d'expérience en [domaine de l'offre]. Expertise approfondie en [compétences matchées]. Maîtrise de [mots-clés EXACTS de l'offre]. [Métrique ou réalisation impressionnante].]
+% STRUCTURE OBLIGATOIRE en 2-3 phrases MAX:
+% 1. ACCROCHE: [Titre/Expertise] avec [X années] d'expérience en [domaine aligné offre]
+% 2. MATCH: Expertise prouvée en \\keyword{[Skill 1 offre]}, \\keyword{[Skill 2 offre]}, \\keyword{[Skill 3 offre]} - les 3-4 compétences CLÉS de l'offre
+% 3. VALEUR: [Ce que j'apporte de UNIQUE] - différenciateur ou projet prouvant la compétence
+%
+% EXEMPLE:
+% Développeur Full Stack avec 3 ans d'expérience en applications \\keyword{TypeScript}/\\keyword{React}.
+% Expertise démontrée en \\keyword{LLM}, \\keyword{RAG}, et \\keyword{Python} à travers le développement de plateformes IA en production.
+% Passionné par l'innovation Cloud, je recherche un environnement R\\&D stimulant pour créer les services IA de demain.
 
-% ===== COMPÉTENCES (triées par pertinence pour l'offre) =====
-\\section{Compétences Techniques}
-% ORDRE: 1) Compétences de l'offre en premier 2) Compétences proches 3) Autres
-\\textbf{${analysisResult.keywords.slice(0, 3).join(", ")} :} [Les compétences qui matchent EXACTEMENT l'offre]\\\\
-\\textbf{Frameworks \\& Outils :} [Autres compétences pertinentes]\\\\
-\\textbf{Méthodologies :} [Agile, Scrum, etc. si mentionnés dans l'offre]
-
-% ===== EXPÉRIENCE PROFESSIONNELLE (ORDRE DYNAMIQUE PAR PERTINENCE) =====
-\\section{Expérience Professionnelle}
-% IMPORTANT: Réordonne les expériences du candidat PAR PERTINENCE pour l'offre
-% Position 1 = expérience la PLUS pertinente (pas forcément la plus récente)
-
-% Pour chaque bullet point:
-% - Utilise les MOTS-CLÉS EXACTS de l'offre
-% - Ajoute des MÉTRIQUES (%, utilisateurs, €, temps)
-% - Structure: [Verbe d'action] + [Technologie de l'offre] + [Résultat mesurable]
-
-\\textbf{[Titre aligné sur l'offre]} \\hfill [Dates]\\\\
-\\textit{[Entreprise], [Ville]}
-\\begin{itemize}[leftmargin=1.5em,topsep=3pt,itemsep=1pt]
-\\item [Verbe] [MOT-CLÉ OFFRE]: [Action] permettant [RÉSULTAT QUANTIFIÉ]
-\\item [Verbe] [MOT-CLÉ OFFRE]: [Action] pour [X utilisateurs/clients]
-\\item [Verbe] collaboration avec équipe de X personnes sur [projet utilisant technologies de l'offre]
+% ===== COMPÉTENCES CLÉS (SCAN RAPIDE) =====
+\\section{Competences Techniques}
+\\begin{itemize}[leftmargin=*, itemsep=1pt, parsep=0pt]
+  \\item \\keyword{[Domaine 1 offre]:} \\keyword{[Skill 1]}, \\keyword{[Skill 2]}, [Skill 3], [Skill 4]
+  \\item \\keyword{[Domaine 2 offre]:} \\keyword{[Skill 1]}, [Skill 2], [Skill 3]
+  \\item \\keyword{[Domaine 3 offre]:} \\keyword{[Skill 1]}, [Skill 2], [Skill 3]
+  \\item \\textbf{Outils \\& DevOps:} \\keyword{[Outil offre]}, Git, Docker, CI/CD
+  \\item \\textbf{Méthodologies:} Agile/Scrum, [Autres]
 \\end{itemize}
 
-% Répète pour chaque expérience, ordonnées par pertinence décroissante
+% ===== EXPÉRIENCE PROFESSIONNELLE =====
+\\section{Experience Professionnelle}
 
-% ===== PROJETS (inclure projets perso, académiques, hackathons) =====
+\\jobheader{[Titre du Poste - aligné avec l'offre]}{[Mois Année] -- [Présent/Mois Année]}{[Entreprise]}{[Ville, Pays]}
+\\begin{itemize}[leftmargin=*, itemsep=1pt, parsep=0pt]
+  \\item \\keyword{[Action avec technologie de l'offre]:} [Description courte avec résultat concret si dispo]
+  \\item \\keyword{[Autre technologie offre]:} [Ce que vous avez fait avec]
+  \\item [Collaboration/Leadership]: [Contexte équipe, méthodologie si pertinent]
+\\end{itemize}
+
+\\vspace{6pt}
+
+% Répéter \\jobheader pour 3-4 expériences MAX, les plus pertinentes pour l'offre
+
+% ===== PROJETS =====
 \\section{Projets}
 
-% IMPORTANT: Inclure TOUS les projets collectés pendant l'entretien
-% Même les projets perso/académiques si pertinents pour l'offre
+\\textbf{[Nom du Projet]} \\hfill [Année]\\\\
+\\keyword{[Tech offre 1]}, \\keyword{[Tech offre 2]}, [Autre tech]\\\\
+{\\small [1-2 lignes: Qu'est-ce que c'est + résultat/impact]}
 
-\\textbf{[Nom du Projet]} -- \\textit{[Contexte: Professionnel/Personnel/Académique], [Année]}\\\\
-[Description ciblée sur les besoins de l'offre]. Technologies: [MOTS-CLÉS OFFRE].\\\\
-Résultat: [Métrique si disponible].
+\\vspace{6pt}
+
+% 2-3 projets pertinents max
 
 % ===== FORMATION =====
 \\section{Formation}
 
-\\textbf{[Diplôme]} \\hfill [Années]\\\\
-\\textit{[École], [Ville]}\\\\
-[Spécialisation pertinente pour l'offre si applicable]
+\\jobheader{[Diplôme / Titre]}{[Années]}{[École / Université]}{[Ville, Pays]}
+{\\small Spécialisation: [Si pertinent pour l'offre]}
 
-% ===== LANGUES (si pertinent) =====
+% ===== LANGUES (1 ligne) =====
 \\section{Langues}
-[Langue 1] ([Niveau]) -- [Langue 2] ([Niveau])
+\\begin{tabular}{@{}l l l@{}}
+\\keyword{Français:} Natif &
+\\keyword{Anglais:} [Niveau] &
+\\keyword{[Autre]:} [Niveau]
+\\end{tabular}
 
 \\end{document}
 
@@ -983,13 +1130,35 @@ Je vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distin
 
 \\end{document}
 
-## RÈGLES ABSOLUES
-1. NE JAMAIS INVENTER de faits - utilise uniquement les données fournies
-2. ÉCHAPPE les caractères spéciaux LaTeX: \\& \\% \\# \\$ \\_ \\{ \\}
-3. INTÈGRE les projets collectés pendant l'entretien (même académiques/perso)
-4. UTILISE les formulations suggérées dans les stratégies
-5. Remplis TOUTES les sections avec les vraies données du candidat
-6. NE PAS inclure de code markdown (pas de \`\`\`latex ou \`\`\`)
+## RÈGLES ABSOLUES - CV PARFAIT (RÈGLE DES 6 SECONDES)
+
+### PHILOSOPHIE CENTRALE: MINIMISER LE REJET
+Le recruteur passe 6 SECONDES à scanner un CV. Il cherche des RAISONS DE REJETER, pas des raisons d'embaucher.
+Notre objectif: ZÉRO raison de rejet + réponse immédiate à "Pourquoi ce candidat?"
+
+### RÈGLES STRUCTURELLES
+1. ⚠️ **2 PAGES MAXIMUM** - Si ça dépasse, COUPE les expériences/projets les moins pertinents
+2. ⚠️ **NOIR ET BLANC** - Aucune \\color{} sauf pour définitions internes, pas de texte coloré
+3. ⚠️ **SECTION "POURQUOI MOI" EN PREMIER** - C'est LA section critique des 6 secondes
+4. ⚠️ **ICONES FONTAWESOME5** - \\faPhone, \\faEnvelope, \\faMapMarker*, \\faLinkedin, \\faGithub, \\faGlobe
+
+### RÈGLES "POURQUOI MOI" (CRITIQUE)
+5. ⚠️ **3 PHRASES MAX** - Accroche + Match (3-4 skills clés) + Valeur unique
+6. ⚠️ **TOP 3-4 SKILLS EN GRAS** - \\keyword{TypeScript}, \\keyword{React}, \\keyword{LLM} etc.
+7. ⚠️ **PROUVER, PAS AFFIRMER** - "Expertise démontrée via [projet]" pas "Expert en..."
+
+### RÈGLES D'HONNÊTETÉ RADICALE
+8. ❌ JAMAIS de pourcentages inventés (pas de "90% Python", pas de barres de progression)
+9. ❌ JAMAIS de métriques non fournies par le candidat
+10. ❌ JAMAIS inventer d'expérience ou de compétence
+11. ✅ TOUJOURS utiliser les vraies données du profil candidat
+
+### RÈGLES TECHNIQUES
+12. ÉCHAPPE les caractères spéciaux LaTeX: \\& \\% \\# \\$ \\_ \\{ \\}
+13. 3-4 expériences les plus pertinentes pour l'offre
+14. NE PAS inclure de code markdown (pas de \`\`\`latex ou \`\`\`)
+15. Utiliser \\jobheader{Titre}{Dates}{Entreprise}{Lieu} pour chaque expérience
+16. Utiliser \\keyword{} pour TOUS les skills qui matchent l'offre
 
 ## FORMAT DE SORTIE OBLIGATOIRE
 

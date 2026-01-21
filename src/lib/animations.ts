@@ -536,3 +536,74 @@ export const iconHover = {
     transition: { duration: DURATION.fast },
   },
 };
+
+// ============================================================================
+// NAVBAR ANIMATIONS
+// ============================================================================
+
+export const navbarEnter: Variants = {
+  initial: { y: -20, opacity: 0 },
+  animate: {
+    y: 0,
+    opacity: 1,
+    transition: { duration: DURATION.normal, ease: EASE.default },
+  },
+};
+
+export const navLinkHover = {
+  whileHover: {
+    y: -2,
+    transition: { duration: DURATION.fast },
+  },
+  whileTap: { scale: 0.98 },
+};
+
+export const logoHover = {
+  whileHover: {
+    scale: 1.05,
+    transition: { duration: DURATION.fast },
+  },
+  whileTap: { scale: 0.98 },
+};
+
+export const navButtonGlow = {
+  whileHover: {
+    boxShadow: "0 4px 20px rgba(99, 102, 241, 0.4)",
+    transition: { duration: DURATION.fast },
+  },
+  whileTap: { scale: 0.98 },
+};
+
+export const dropdownItemVariants: Variants = {
+  initial: { opacity: 0, x: -10 },
+  animate: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: { delay: i * 0.05, duration: DURATION.fast },
+  }),
+};
+
+export const bottomNavItem = {
+  whileHover: { y: -2 },
+  whileTap: { scale: 0.95 },
+};
+
+// ============================================================================
+// THEME TOGGLE ANIMATIONS
+// ============================================================================
+
+export const themeIconVariants: Variants = {
+  initial: { scale: 0, rotate: -180, opacity: 0 },
+  animate: {
+    scale: 1,
+    rotate: 0,
+    opacity: 1,
+    transition: { duration: DURATION.normal, ease: EASE.bounce },
+  },
+  exit: {
+    scale: 0,
+    rotate: 180,
+    opacity: 0,
+    transition: { duration: DURATION.fast },
+  },
+};
